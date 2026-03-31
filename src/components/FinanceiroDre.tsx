@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { useToast } from './Toast';
+import { useAppContext } from '../context/AppContext';
+import { Modal } from './ui/Modal';
 
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 const toDisplayDate = (iso: string) => {
@@ -103,28 +105,8 @@ const NovaTransacaoModal = ({ onAdd, onClose }: NovaTransacaoModalProps) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-[#141414] border border-[#333] rounded-xl w-full max-w-md shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[#333]">
-          <h3 className="font-semibold text-white">Nova Transação</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+    <Modal isOpen={true} onClose={onClose} title="Nova Transação" maxWidth="max-w-md">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Tipo */}
           <div className="flex rounded-lg overflow-hidden border border-[#333]">
             {(['income', 'expense'] as TransactionType[]).map((t) => (
@@ -213,23 +195,20 @@ const NovaTransacaoModal = ({ onAdd, onClose }: NovaTransacaoModalProps) => {
             </button>
           </div>
         </form>
-      </motion.div>
-    </motion.div>
+    </Modal>
   );
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const FinanceiroDre = () => {
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>(
-    'lineos-transactions',
-    initialTransactions
-  );
+  const { transactions, setTransactions, addTransaction } = useAppContext();
   const [showModal, setShowModal] = useState(false);
   const { showToast, ToastContainer } = useToast();
 
   const handleAdd = (tx: Transaction) => {
-    setTransactions((prev) => [tx, ...prev]);
+    addTransaction(tx);
     setShowModal(false);
+    showToast('Transação registrada', 'success');
   };
 
   const handleDelete = useCallback(

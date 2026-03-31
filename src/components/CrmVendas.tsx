@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { useToast } from './Toast';
 import { useAppContext } from '../context/AppContext';
+import { Modal } from './ui/Modal';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Column {
@@ -79,38 +80,17 @@ const NovoLeadModal = ({ onAdd, onClose, columns }: NovoLeadModalProps) => {
     const value = parseFloat(form.value);
     if (!form.title.trim() || isNaN(value)) return;
     onAdd({
-      id: `lead-${Date.now()}`,
+      columnId: form.columnId,
       title: form.title,
       value,
-      columnId: form.columnId,
       date: form.date,
-    });
+    } as any);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-[#141414] border border-[#333] rounded-xl w-full max-w-md shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[#333]">
-          <h3 className="font-semibold text-white flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-400" /> Novo Lead
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+    <Modal isOpen={true} onClose={onClose} title="Novo Lead" maxWidth="max-w-md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+
           <div>
             <label className="block text-xs text-gray-400 mb-1">Empresa / Lead</label>
             <input
@@ -176,8 +156,7 @@ const NovoLeadModal = ({ onAdd, onClose, columns }: NovoLeadModalProps) => {
             </button>
           </div>
         </form>
-      </motion.div>
-    </motion.div>
+    </Modal>
   );
 };
 
@@ -234,7 +213,7 @@ const SortableItem = ({ id, item, onDelete }: SortableItemProps) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const CrmVendas = () => {
-  const { leads: items, setLeads: setItems, updateLeadStatus } = useAppContext();
+  const { leads: items, setLeads: setItems, updateLeadStatus, addLead } = useAppContext();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [originalColumnId, setOriginalColumnId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
@@ -506,7 +485,11 @@ const CrmVendas = () => {
       <AnimatePresence>
         {showModal && (
           <NovoLeadModal
-            onAdd={handleAddLead}
+            onAdd={(lead) => {
+              addLead(lead);
+              setShowModal(false);
+              showToast('Lead adicionado', 'success');
+            }}
             onClose={() => setShowModal(false)}
             columns={initialColumns}
           />

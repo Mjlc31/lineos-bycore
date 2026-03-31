@@ -9,11 +9,13 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  Layers,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 export type LineOsTab =
+  | 'dashboard'
   | 'gestor'
   | 'aprovacao'
   | 'crm'
@@ -27,7 +29,8 @@ interface Props {
 }
 
 const navItems = [
-  { id: 'gestor', label: 'Gestor de Tarefas', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'gestor', label: 'Gestor de Tarefas', icon: Layers },
   { id: 'aprovacao', label: 'Aprovação', icon: CheckSquare },
   { id: 'crm', label: 'CRM & Vendas', icon: Users },
   { id: 'financeiro', label: 'Financeiro', icon: DollarSign },

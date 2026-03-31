@@ -25,6 +25,9 @@ interface AppContextType {
   // Actions
   updateLeadStatus: (leadId: string, newColumnId: string) => void;
   addTransaction: (tx: Omit<Transaction, 'id'>) => void;
+  addLead: (lead: Omit<Lead, 'id'>) => void;
+  addMeeting: (meeting: Omit<Meeting, 'id'>) => void;
+  addContentItem: (item: Omit<ContentItem, 'id'>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -87,6 +90,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, columnId: newColumnId } : l));
   };
 
+  const addLead = (lead: Omit<Lead, 'id'>) => {
+    const newLead = { ...lead, id: `lead-${Date.now()}` };
+    setLeads(prev => [newLead, ...prev]);
+  };
+
+  const addMeeting = (meeting: Omit<Meeting, 'id'>) => {
+    const newMeeting = { ...meeting, id: `meet-${Date.now()}` };
+    setMeetings(prev => [...prev, newMeeting]);
+  };
+
+  const addContentItem = (item: Omit<ContentItem, 'id'>) => {
+    const newItem = { ...item, id: `content-${Date.now()}` };
+    setContentItems(prev => [newItem, ...prev]);
+  };
+
   return (
     <AppContext.Provider value={{ 
       tasks, setTasks, 
@@ -95,7 +113,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       contentItems, setContentItems,
       meetings, setMeetings,
       updateLeadStatus,
-      addTransaction
+      addTransaction,
+      addLead,
+      addMeeting,
+      addContentItem
     }}>
       {children}
     </AppContext.Provider>

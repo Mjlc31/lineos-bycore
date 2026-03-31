@@ -10,8 +10,10 @@ import Academy from './components/Academy';
 import Agendamento from './components/Agendamento';
 import CommandPalette from './components/CommandPalette';
 
+import Dashboard from './components/Dashboard';
+
 function App() {
-  const [activeTab, setActiveTab] = useState<LineOsTab>('gestor');
+  const [activeTab, setActiveTab] = useState<LineOsTab>('dashboard');
   const [showPalette, setShowPalette] = useState(false);
 
   // Global Ctrl+K listener
@@ -33,6 +35,8 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard onNavigate={handleNavigate} />;
       case 'gestor':
         return <ClickUpInterface />;
       case 'aprovacao':

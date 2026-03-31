@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, LayoutDashboard, CheckSquare, Users, DollarSign, GraduationCap, Calendar, ArrowRight, Command } from 'lucide-react';
+import { Search, LayoutDashboard, CheckSquare, Users, DollarSign, GraduationCap, Calendar, ArrowRight, Command, Layers } from 'lucide-react';
 import { LineOsTab } from './LineOsSidebar';
 import { useAppContext } from '../context/AppContext';
 
@@ -12,7 +12,8 @@ interface Props {
 }
 
 const modules = [
-  { id: 'gestor' as LineOsTab, label: 'Gestor de Tarefas', description: 'Gerencie tarefas e conteúdos por status', icon: LayoutDashboard, category: 'Módulos' },
+  { id: 'dashboard' as LineOsTab, label: 'Dashboard Geral', description: 'Visão 360 e indicadores em tempo real', icon: LayoutDashboard, category: 'Módulos' },
+  { id: 'gestor' as LineOsTab, label: 'Gestor de Tarefas', description: 'Gerencie tarefas e conteúdos por status', icon: Layers, category: 'Módulos' },
   { id: 'aprovacao' as LineOsTab, label: 'Aprovação de Conteúdo', description: 'Revise e aprove mídias da equipe', icon: CheckSquare, category: 'Módulos' },
   { id: 'crm' as LineOsTab, label: 'CRM & Vendas', description: 'Pipeline de vendas e leads', icon: Users, category: 'Módulos' },
   { id: 'financeiro' as LineOsTab, label: 'Financeiro & DRE', description: 'Fluxo de caixa e saúde financeira', icon: DollarSign, category: 'Módulos' },
