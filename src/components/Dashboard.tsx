@@ -63,12 +63,31 @@ const Dashboard = ({ onNavigate }: { onNavigate: (tab: any) => void }) => {
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [meetings, today]);
 
+  // --- Top Leads ---
+  const topLeads = useMemo(() => {
+    return leads
+      .filter(l => l.columnId !== 'ganho' && l.columnId !== 'perdido')
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3);
+  }, [leads]);
+
+  // --- Lead Sources ---
+  const leadSourcesData = useMemo(() => {
+    const sources: Record<string, number> = {};
+    leads.forEach(l => {
+      const s = l.source || 'Sem Origem';
+      sources[s] = (sources[s] || 0) + 1;
+    });
+    return Object.entries(sources).map(([name, value]) => ({ name, value }));
+  }, [leads]);
+  const SOURCE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899'];
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="p-8 h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-[#0a0a0a] to-[#111] text-white"
+      className="p-8 h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-[#0a0a0a] to-[#111] text-white flex-1"
     >
-      <div className="max-w-[1600px] mx-auto space-y-8">
+      <div className="max-w-[95vw] w-full mx-auto space-y-[clamp(1.5rem,3vh,3rem)]">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -114,9 +133,15 @@ const Dashboard = ({ onNavigate }: { onNavigate: (tab: any) => void }) => {
                 </div>
                 <span className={`text-xs font-bold px-2 py-1 rounded ${profit >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>Margem</span>
              </div>
-             <h3 className={`text-2xl font-black tracking-tight mb-1 group-hover:text-green-400 transition-colors ${profit < 0 ? 'text-red-400' : ''}`}>
+             <motion.h3 
+               key={profit}
+               initial={{ scale: 1.1, color: '#22c55e' }}
+               animate={{ scale: 1, color: profit < 0 ? '#f87171' : '#ffffff' }}
+               transition={{ duration: 0.5 }}
+               className={`text-2xl font-black tracking-tight mb-1 group-hover:text-green-400 transition-colors`}
+             >
                R$ {profit.toLocaleString('pt-BR')}
-             </h3>
+             </motion.h3>
              <p className="text-xs text-gray-500 font-medium">Lucro Líquido (Receitas - Despesas)</p>
            </motion.div>
 
@@ -149,134 +174,165 @@ const Dashboard = ({ onNavigate }: { onNavigate: (tab: any) => void }) => {
            </motion.div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-           
-           {/* Section: Meu Dia (Meetings) */}
-           <div className="bg-[#141414] border border-[#222] rounded-2xl p-6 flex flex-col shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                 <h3 className="font-bold text-lg flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-orange-500" /> Meu Dia
-                 </h3>
-                 <button onClick={() => onNavigate('agendamento')} className="text-xs bg-[#222] hover:bg-[#333] px-2.5 py-1 rounded text-gray-300 font-medium transition-colors">Ver Agenda</button>
-              </div>
-              
-              <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2">
-                 {todaysMeetings.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center py-10">
-                       <div className="w-16 h-16 rounded-full bg-[#1e1e1e] flex items-center justify-center mb-3">
-                          <Calendar className="w-6 h-6 opacity-40" />
-                       </div>
-                       <p className="text-sm">Dia livre. Nenhuma reunião para hoje.</p>
-                    </div>
-                 ) : (
-                    todaysMeetings.map(m => (
-                       <div key={m.id} className="relative bg-[#1a1a1a] border border-[#333] rounded-xl p-4 hover:border-orange-500/50 transition-colors group">
-                          <div className="absolute left-0 top-3 bottom-3 w-1 bg-orange-500 rounded-r-full" />
-                          <div className="pl-2">
-                             <div className="font-semibold text-sm mb-2 group-hover:text-orange-400 transition-colors">{m.title}</div>
-                             <div className="flex items-center justify-between text-xs text-gray-400">
-                                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{m.time}</span>
-                                {m.platform && <span className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded text-blue-400"><Video className="w-3.5 h-3.5" />{m.platform}</span>}
-                             </div>
-                             {m.client && <div className="mt-2 text-xs text-gray-500 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {m.client}</div>}
-                          </div>
-                       </div>
-                    ))
-                 )}
-              </div>
-           </div>
-
-           {/* Section: Pipeline CRM */}
-           <div className="bg-[#141414] border border-[#222] rounded-2xl p-6 flex flex-col shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                 <h3 className="font-bold text-lg flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-500" /> Funil de Vendas CRM
-                 </h3>
-                 <button onClick={() => onNavigate('crm')} className="text-xs bg-[#222] hover:bg-[#333] px-2.5 py-1 rounded text-gray-300 font-medium transition-colors">Abrir CRM</button>
-              </div>
-              <div className="flex-1 min-h-[250px] w-full mt-4">
-                  {pipelineValue > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={crmData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
-                        <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 500 }} width={80} />
-                        <Tooltip 
-                            cursor={{ fill: '#1a1a1a' }} 
-                            contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '8px' }} 
-                            formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR')}`, 'Valor']} 
-                        />
-                        <Bar dataKey="valor" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={28}>
-                          {crmData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.id === 'ganho' ? '#22c55e' : entry.id === 'proposta' ? '#f97316' : '#3b82f6'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                     <div className="h-full flex items-center justify-center text-gray-500 text-sm">Nenhum dado no funil no momento.</div>
-                  )}
-              </div>
-           </div>
-
-           {/* Section: Status Conteúdos */}
-           <div className="bg-[#141414] border border-[#222] rounded-2xl p-6 flex flex-col shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                 <h3 className="font-bold text-lg flex items-center gap-2">
-                    <CheckSquare className="w-5 h-5 text-yellow-500" /> Review de Conteúdos
-                 </h3>
-                 <button onClick={() => onNavigate('aprovacao')} className="text-xs bg-[#222] hover:bg-[#333] px-2.5 py-1 rounded text-gray-300 font-medium transition-colors">Aprovações</button>
-              </div>
-              
-              <div className="flex-1 flex flex-col justify-center items-center">
-                 {contentData.length > 0 ? (
-                    <div className="w-full flex items-center justify-between">
-                       <div className="h-[200px] w-1/2">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie data={contentData} innerRadius={55} outerRadius={80} dataKey="value" stroke="none" paddingAngle={5}>
-                                {contentData.map((entry, idx) => (
-                                  <Cell key={`cell-${idx}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '8px' }} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                       </div>
-                       <div className="w-1/2 space-y-4 pl-4 border-l border-[#222]">
-                          {contentData.map(d => (
-                             <div key={d.name} className="flex flex-col">
-                                <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider flex items-center gap-1.5 mb-1">
-                                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} /> {d.name}
-                                </div>
-                                <div className="text-xl font-bold">{d.value} <span className="text-xs font-normal text-gray-500">itens</span></div>
-                             </div>
-                          ))}
-                       </div>
-                    </div>
-                 ) : (
-                    <div className="text-center text-gray-500 text-sm">Tudo aprovado e em dia! 🎉</div>
-                 )}
-              </div>
-              
-              {pendingContents.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-[#222]">
-                     <div className="text-xs text-gray-400 mb-3 font-medium">Últimos Solicitados</div>
-                     <div className="space-y-2">
-                        {pendingContents.slice(0, 2).map(c => (
-                           <div key={c.id} className="bg-[#1a1a1a] rounded flex items-center justify-between px-3 py-2 border border-[#222] hover:border-yellow-500/30 transition-colors group cursor-pointer" onClick={() => onNavigate('aprovacao')}>
-                              <span className="text-xs font-medium truncate pr-2 group-hover:text-yellow-400">{c.title}</span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase flex-shrink-0 ${
-                                 c.status === 'PENDENTE' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                              }`}>{c.status}</span>
-                           </div>
-                        ))}
+         {/* Main Content Grid 1: Operations */}
+         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-[40vh]">
+            
+            {/* Section: Meu Dia (Meetings) */}
+            <div className="bg-[#141414] border border-[#222] rounded-2xl p-6 flex flex-col shadow-xl">
+               <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                     <Calendar className="w-5 h-5 text-orange-500" /> Meu Dia
+                  </h3>
+                  <button onClick={() => onNavigate('agendamento')} className="text-xs bg-[#222] hover:bg-[#333] px-2.5 py-1 rounded text-gray-300 font-medium transition-colors">Ver Agenda</button>
+               </div>
+               
+               <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2 min-h-[250px]">
+                  {todaysMeetings.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center py-10">
+                        <div className="w-16 h-16 rounded-full bg-[#1e1e1e] flex items-center justify-center mb-3">
+                           <Calendar className="w-6 h-6 opacity-40" />
+                        </div>
+                        <p className="text-sm">Dia livre. Nenhuma reunião para hoje.</p>
                      </div>
-                  </div>
-              )}
-           </div>
+                  ) : (
+                     todaysMeetings.map(m => (
+                        <div key={m.id} className="relative bg-[#1a1a1a] border border-[#333] rounded-xl p-4 hover:border-orange-500/50 transition-colors group">
+                           <div className="absolute left-0 top-3 bottom-3 w-1 bg-orange-500 rounded-r-full" />
+                           <div className="pl-2">
+                              <div className="font-semibold text-sm mb-2 group-hover:text-orange-400 transition-colors">{m.title}</div>
+                              <div className="flex items-center justify-between text-xs text-gray-400">
+                                 <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{m.time}</span>
+                                 {m.platform && <span className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded text-blue-400"><Video className="w-3.5 h-3.5" />{m.platform}</span>}
+                              </div>
+                              {m.client && <div className="mt-2 text-xs text-gray-500 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {m.client}</div>}
+                           </div>
+                        </div>
+                     ))
+                  )}
+               </div>
+            </div>
 
-        </div>
+            {/* Section: Status Conteúdos */}
+            <div className="bg-[#141414] border border-[#222] rounded-2xl p-6 flex flex-col shadow-xl">
+               <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                     <CheckSquare className="w-5 h-5 text-yellow-500" /> Review de Conteúdos
+                  </h3>
+                  <button onClick={() => onNavigate('aprovacao')} className="text-xs bg-[#222] hover:bg-[#333] px-2.5 py-1 rounded text-gray-300 font-medium transition-colors">Aprovações</button>
+               </div>
+               
+               <div className="flex-1 flex flex-col justify-center items-center">
+                  {contentData.length > 0 ? (
+                     <div className="w-full flex items-center justify-between">
+                        <div className="h-[200px] w-1/2">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <PieChart>
+                               <Pie data={contentData} innerRadius={55} outerRadius={80} dataKey="value" stroke="none" paddingAngle={5}>
+                                 {contentData.map((entry, idx) => (
+                                   <Cell key={`cell-${idx}`} fill={entry.color} />
+                                 ))}
+                               </Pie>
+                               <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '8px' }} />
+                             </PieChart>
+                           </ResponsiveContainer>
+                        </div>
+                        <div className="w-1/2 space-y-4 pl-4 border-l border-[#222]">
+                           {contentData.map(d => (
+                              <div key={d.name} className="flex flex-col">
+                                 <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider flex items-center gap-1.5 mb-1">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} /> {d.name}
+                                 </div>
+                                 <div className="text-xl font-bold">{d.value} <span className="text-xs font-normal text-gray-500">itens</span></div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  ) : (
+                     <div className="text-center text-gray-500 text-sm">Tudo aprovado e em dia! 🎉</div>
+                  )}
+               </div>
+               
+               {pendingContents.length > 0 && (
+                   <div className="mt-4 pt-4 border-t border-[#222]">
+                      <div className="text-xs text-gray-400 mb-3 font-medium">Últimos Solicitados</div>
+                      <div className="space-y-2">
+                         {pendingContents.slice(0, 2).map(c => (
+                            <div key={c.id} className="bg-[#1a1a1a] rounded flex items-center justify-between px-3 py-2 border border-[#222] hover:border-yellow-500/30 transition-colors group cursor-pointer" onClick={() => onNavigate('aprovacao')}>
+                               <span className="text-xs font-medium truncate pr-2 group-hover:text-yellow-400">{c.title}</span>
+                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase flex-shrink-0 ${
+                                  c.status === 'PENDENTE' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                               }`}>{c.status}</span>
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+               )}
+            </div>
+
+            {/* Section: Top Deals & Acquisition */}
+            <div className="bg-[#141414] border border-[#222] rounded-2xl p-6 flex flex-col shadow-xl">
+               <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg flex items-center gap-2 text-white">
+                     <TrendingUp className="w-5 h-5 text-blue-500" /> Inteligência de Vendas
+                  </h3>
+                  <button onClick={() => onNavigate('crm')} className="text-xs bg-[#222] hover:bg-[#333] px-2.5 py-1 rounded text-gray-300 font-medium transition-colors">CRM Completo</button>
+               </div>
+               
+               <div className="flex-1 flex flex-col gap-6">
+                 {/* Top Deals List */}
+                 <div>
+                   <h4 className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-3">Maiores Acordos (Em Aberto)</h4>
+                   <div className="space-y-2">
+                     {topLeads.map((l, i) => (
+                       <div key={l.id} className="flex items-center justify-between bg-[#1a1a1a] p-3 rounded-lg border border-[#333] group hover:border-[#444] transition-colors">
+                         <div className="flex items-center gap-3">
+                           <div className="w-6 h-6 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold text-xs">{i + 1}</div>
+                           <div>
+                             <div className="text-sm font-semibold text-gray-200 group-hover:text-white transition-colors">{l.title}</div>
+                             {l.contactName && <div className="text-xs text-gray-500">{l.contactName}</div>}
+                           </div>
+                         </div>
+                         <div className="text-right">
+                           <div className="text-sm font-bold text-green-400">R$ {l.value.toLocaleString('pt-BR')}</div>
+                           <div className="text-[10px] uppercase font-semibold text-gray-500 bg-[#222] px-1.5 rounded">{l.columnId}</div>
+                         </div>
+                       </div>
+                     ))}
+                     {topLeads.length === 0 && <div className="text-xs text-gray-500 text-center p-4">Pipeline vazio no momento.</div>}
+                   </div>
+                 </div>
+
+                 {/* Lead Sources Small Chart */}
+                 <div className="pt-4 border-t border-[#333] flex items-center gap-4">
+                   <div className="w-20 h-20 flex-shrink-0">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <PieChart>
+                         <Pie data={leadSourcesData} innerRadius={20} outerRadius={35} dataKey="value" stroke="none">
+                           {leadSourcesData.map((entry, index) => (
+                             <Cell key={`cell-${index}`} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
+                           ))}
+                         </Pie>
+                         <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #333', fontSize: '12px' }} />
+                       </PieChart>
+                     </ResponsiveContainer>
+                   </div>
+                   <div className="flex-1">
+                     <h4 className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Origem dos Contatos</h4>
+                     <div className="space-y-1.5 flex flex-wrap gap-x-4">
+                       {leadSourcesData.map((s, idx) => (
+                         <div key={s.name} className="flex items-center gap-1.5">
+                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: SOURCE_COLORS[idx % SOURCE_COLORS.length] }} />
+                           <span className="text-xs font-medium text-gray-300">{s.name}</span>
+                           <span className="text-xs text-gray-500">({s.value})</span>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 </div>
+               </div>
+            </div>
+
+         </div>
       </div>
     </motion.div>
   );

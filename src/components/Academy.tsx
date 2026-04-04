@@ -2,18 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { Play, Clock, ChevronRight, BookOpen, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import useEscapeKey from '../hooks/useEscapeKey';
-import useLocalStorage from '../hooks/useLocalStorage';
-
-const trilhas = [
-  { id: 1, img: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=2070&auto=format&fit=crop', title: 'Onboarding', duration: '2h 30m', videos: 5 },
-  { id: 2, img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2015&auto=format&fit=crop', title: 'Gestão de Comercial', duration: '5h 15m', videos: 12 },
-  { id: 3, img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1974&auto=format&fit=crop', title: 'Design & Criativos', duration: '3h 45m', videos: 8 },
-  { id: 4, img: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?q=80&w=2070&auto=format&fit=crop', title: 'Atendimento Pró', duration: '1h 20m', videos: 3 },
-];
+import { useAppContext } from '../context/AppContext';
+import { academyTracks } from '../data';
 
 const Academy = () => {
   const [activeVideo, setActiveVideo] = useState<{ id: string, title: string } | null>(null);
-  const [watchedVideos, setWatchedVideos] = useLocalStorage<string[]>('line_os_academy_watched', []);
+  const { watchedVideos, toggleVideoWatched } = useAppContext();
 
   // For Escape key closing
   const closeVideo = useCallback(() => setActiveVideo(null), []);
@@ -21,12 +15,6 @@ const Academy = () => {
 
   const openVideo = (id: string, title: string) => {
     setActiveVideo({ id, title });
-  };
-
-  const toggleWatch = (id: string) => {
-    setWatchedVideos(prev => 
-      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
-    );
   };
 
   const getProgress = (id: number, total: number) => {
@@ -47,7 +35,7 @@ const Academy = () => {
       animate={{ opacity: 1, y: 0 }}
       className="p-8 h-full overflow-auto bg-[#0a0a0a] text-white"
     >
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-[95vw] w-full max-w-screen-2xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold mb-1">LINE Academy</h1>
@@ -66,7 +54,7 @@ const Academy = () => {
 
         {/* Hero */}
         <div 
-          className="relative rounded-2xl overflow-hidden mb-12 h-[400px] group cursor-pointer border border-[#222] hover:border-red-500/30 transition-colors shadow-2xl"
+          className="relative rounded-2xl overflow-hidden mb-12 flex flex-col md:aspect-[21/9] min-h-[350px] group cursor-pointer border border-[#222] hover:border-red-500/30 transition-colors shadow-2xl"
           onClick={() => openVideo(heroId, 'Como conduzir uma Reunião de Kickoff Perfeita')}
         >
           <img 
@@ -109,8 +97,8 @@ const Academy = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {trilhas.map((trilha) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {academyTracks.map((trilha) => {
              const trilhaId = `trilha-${trilha.id}`;
              const isWatched = watchedVideos.includes(trilhaId);
              
@@ -121,7 +109,7 @@ const Academy = () => {
                  className="group cursor-pointer bg-[#141414] border border-[#222] rounded-2xl overflow-hidden hover:border-red-500/30 transition-all shadow-lg"
                  onClick={() => openVideo(trilhaId, `Trilha: ${trilha.title}`)}
                >
-                 <div className="relative h-40 overflow-hidden">
+                 <div className="relative aspect-video overflow-hidden shrink-0">
                    <img src={trilha.img} alt={trilha.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
                    <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent"></div>
                    
@@ -138,7 +126,7 @@ const Academy = () => {
                    )}
                  </div>
                  
-                 <div className="p-5 flex flex-col h-32 relative">
+                 <div className="p-5 flex flex-col flex-1 min-h-[140px] relative">
                    <h4 className="font-semibold text-[15px] group-hover:text-red-400 transition-colors mb-2 pr-4 leading-tight">{trilha.title}</h4>
                    <div className="flex items-center gap-3 mt-auto text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-3">
                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {trilha.duration}</span>
@@ -183,7 +171,7 @@ const Academy = () => {
                 </h3>
                 <div className="flex items-center gap-3">
                    <button 
-                     onClick={() => toggleWatch(activeVideo.id)}
+                     onClick={() => toggleVideoWatched(activeVideo.id)}
                      className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors border ${
                         watchedVideos.includes(activeVideo.id) 
                            ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20' 

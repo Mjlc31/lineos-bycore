@@ -17,6 +17,7 @@ import useEscapeKey from '../hooks/useEscapeKey';
 import { useToast } from './Toast';
 import { useAppContext } from '../context/AppContext';
 import { Modal } from './ui/Modal';
+import { LeadDrawer } from './LeadDrawer';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Column {
@@ -166,9 +167,10 @@ interface SortableItemProps {
   id: string;
   item: Lead;
   onDelete: (id: string) => void;
+  onClick: (item: Lead) => void;
 }
 
-const SortableItem = ({ id, item, onDelete }: SortableItemProps) => {
+const SortableItem = ({ id, item, onDelete, onClick }: SortableItemProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
   const style = {
@@ -183,6 +185,7 @@ const SortableItem = ({ id, item, onDelete }: SortableItemProps) => {
       style={style}
       {...attributes}
       {...listeners}
+      onClick={() => onClick(item)}
       className="bg-[#141414] border border-[#222] rounded-xl p-4 cursor-grab active:cursor-grabbing hover:border-[#333] transition-all duration-150 group"
     >
       <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-white">
@@ -213,11 +216,12 @@ const SortableItem = ({ id, item, onDelete }: SortableItemProps) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const CrmVendas = () => {
-  const { leads: items, setLeads: setItems, updateLeadStatus, addLead } = useAppContext();
+  const { leads: items, setLeads: setItems, updateLeadStatus, addLead, updateLeadDetails } = useAppContext();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [originalColumnId, setOriginalColumnId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
   const { showToast, ToastContainer } = useToast();
 
   const sensors = useSensors(
@@ -298,7 +302,7 @@ const CrmVendas = () => {
        updateLeadStatus(activeItemId, targetColumnId);
        
        if (targetColumnId === 'ganho') {
-         showToast(`O lead "${activeItem.title}" foi fechado! Receita gerada.`);
+         showToast(`O lead "${activeItem.title}" foi fechado! 🎉 Receita gerada.`, 'success');
        }
     } else {
        // Apenas salva a ordem
@@ -343,7 +347,7 @@ const CrmVendas = () => {
       animate={{ opacity: 1, y: 0 }}
       className="p-8 h-full flex flex-col bg-[#0a0a0a] text-white overflow-hidden"
     >
-      <div className="max-w-[1600px] mx-auto w-full flex flex-col h-full">
+      <div className="max-w-[95vw] mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 flex-shrink-0">
           <div>
@@ -402,7 +406,7 @@ const CrmVendas = () => {
                 return (
                   <div
                     key={col.id}
-                    className={`w-[272px] flex-shrink-0 flex flex-col gap-3 h-full rounded-xl transition-all duration-200 ${
+                    className={`w-[clamp(240px,20vw,320px)] flex-shrink-0 flex flex-col gap-3 h-full rounded-xl transition-all duration-200 ${
                       isOver ? 'ring-2 ring-white/20 bg-white/[0.02]' : ''
                     }`}
                   >
@@ -436,6 +440,7 @@ const CrmVendas = () => {
                             id={item.id}
                             item={item}
                             onDelete={handleDelete}
+                            onClick={(lead) => setDrawerLead(lead)}
                           />
                         ))}
                       </SortableContext>
@@ -459,7 +464,7 @@ const CrmVendas = () => {
 
               <DragOverlay>
                 {activeItem ? (
-                  <div className="bg-[#1c1c1c] border border-[#444] rounded-xl p-4 shadow-2xl rotate-2 scale-105 w-[272px]">
+                  <div className="bg-[#1c1c1c] border border-[#444] rounded-xl p-4 shadow-2xl rotate-2 scale-105 w-[clamp(240px,20vw,320px)]">
                     <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-white">
                       <div className="w-6 h-6 rounded bg-[#333] flex items-center justify-center text-white">
                         <Building2 className="w-3 h-3" />
@@ -492,6 +497,21 @@ const CrmVendas = () => {
             }}
             onClose={() => setShowModal(false)}
             columns={initialColumns}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {drawerLead && (
+          <LeadDrawer
+            isOpen={!!drawerLead}
+            onClose={() => setDrawerLead(null)}
+            lead={drawerLead}
+            onUpdate={(id, updates) => {
+              updateLeadDetails(id, updates);
+              // Also update the local state to reflect changes instantly in the drawer view
+              setDrawerLead(prev => prev ? { ...prev, ...updates } : null);
+            }}
           />
         )}
       </AnimatePresence>

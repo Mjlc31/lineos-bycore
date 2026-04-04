@@ -21,6 +21,11 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  /* Fluid typography: base font size scales smoothly between screens */
+  font-size: clamp(12px, 0.75vw + 6px, 18px);
+}
+
 @layer base {
   body {
     @apply bg-[#0a0a0a] text-gray-200 antialiased;
@@ -89,4 +94,13 @@
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Hide scrollbar for smooth internal scroll areas */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -39,7 +39,7 @@ export type Client = {
   ultimaReuniao?: string;
 };
 
-export type ViewType = 'overview' | 'tasks' | 'clients';
+export type ViewType = 'overview' | 'tasks' | 'clients' | 'board' | 'calendar';
 
 // ─── CRM Types ───────────────────────────────────────────────────────────────
 export type Column = {
@@ -48,12 +48,28 @@ export type Column = {
   color: string;
 };
 
+export type LeadActivity = {
+  id: string;
+  type: 'note' | 'status_change' | 'email' | 'call';
+  content: string;
+  date: string; // ISO
+};
+
 export type Lead = {
   id: string;
   columnId: string;
   title: string;
   value: number;
   date: string;
+  
+  // Advanced Fields
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  source?: string;
+  tags?: string[];
+  notes?: string;
+  activities?: LeadActivity[];
 };
 
 // ─── Financeiro Types ──────────────────────────────────────────────────────────
@@ -70,7 +86,7 @@ export type Transaction = {
 
 // ─── Aprovação Types ───────────────────────────────────────────────────────────
 export type ContentStatus = 'PENDENTE' | 'REVISÃO' | 'APROVADO';
-export type ContentType = 'video' | 'image' | 'pdf';
+export type ContentType = 'video' | 'image' | 'pdf' | 'audio';
 
 export type ContentItem = {
   id: number;
@@ -82,6 +98,7 @@ export type ContentItem = {
   thumbnail: string;
   color: string;
   textColor: string;
+  fileUrl?: string; // Para preview nos arquivos carregados localmente
 };
 
 // ─── Agendamento Types ─────────────────────────────────────────────────────────
@@ -93,4 +110,20 @@ export type Meeting = {
   client: string;
   platform: string;
   isToday: boolean;
+};
+
+// ─── ACADEMY Types ─────────────────────────────────────────────────────────────
+export type VideoLesson = {
+  id: string;
+  title: string;
+  duration: string;
+};
+
+export type CourseTrack = {
+  id: number;
+  img: string;
+  title: string;
+  duration: string;
+  videos: number;
+  lessons?: VideoLesson[];
 };

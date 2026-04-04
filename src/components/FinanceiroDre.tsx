@@ -245,7 +245,7 @@ const FinanceiroDre = () => {
       animate={{ opacity: 1, y: 0 }}
       className="p-8 h-full overflow-auto bg-[#0a0a0a] text-white"
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-[95vw] w-full max-w-screen-2xl mx-auto flex flex-col min-h-full">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold mb-1">Financeiro & DRE</h1>
@@ -332,7 +332,7 @@ const FinanceiroDre = () => {
           <div className="col-span-2 bg-[#141414] border border-[#222] rounded-xl p-6">
             <h3 className="text-sm font-semibold mb-6">DRE — Evolução Mensal</h3>
             {chartData.length > 0 ? (
-              <div className="h-72 w-full">
+              <div className="h-[min(40vh,400px)] min-h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -370,7 +370,7 @@ const FinanceiroDre = () => {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-72 flex items-center justify-center text-gray-600 flex-col gap-2">
+              <div className="h-[min(40vh,400px)] min-h-[300px] flex items-center justify-center text-gray-600 flex-col gap-2">
                 <TrendingUp className="w-10 h-10 opacity-20" />
                 <p className="text-sm">Adicione transações para ver o gráfico</p>
               </div>

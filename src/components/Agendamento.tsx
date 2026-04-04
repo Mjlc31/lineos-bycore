@@ -1,17 +1,15 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Calendar as CalendarIcon, Clock, Users, Video, Plus, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Users, Video, Plus, X, ChevronLeft, ChevronRight, Trash2, MapPin, ArrowRight, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { useToast } from './Toast';
 import { Meeting } from '../types';
-import { Modal } from './ui/Modal';
 
-// ─── Helpers de Data ──────────────────────────────────────────────────────────
+// ─── Utils ─────────────────────────────────────────────────────────────────
 const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
 const toDisplayDate = (iso: string) => {
@@ -21,14 +19,24 @@ const toDisplayDate = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
-// ─── Nova Reunião Modal ───────────────────────────────────────────────────────
-interface NovaReuniaoModalProps {
+// Determina cores das labels pelas plataformas (para TimeLine e Grid)
+const getPlatformColor = (platform: string) => {
+  const p = platform.toLowerCase();
+  if (p.includes('meet')) return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' };
+  if (p.includes('zoom')) return { bg: 'bg-blue-500/10', text: 'text-blue-400', dot: 'bg-blue-400' };
+  if (p.includes('teams')) return { bg: 'bg-indigo-500/10', text: 'text-indigo-400', dot: 'bg-indigo-400' };
+  if (p.includes('presencial')) return { bg: 'bg-orange-500/10', text: 'text-orange-400', dot: 'bg-orange-400' };
+  return { bg: 'bg-gray-500/10', text: 'text-gray-400', dot: 'bg-gray-400' };
+};
+
+// ─── Drawer: Nova Reunião ────────────────────────────────────────────────────
+interface NovaReuniaoDrawerProps {
   onAdd: (meeting: Omit<Meeting, 'id'>) => void;
   onClose: () => void;
   initialDate?: string;
 }
 
-const NovaReuniaoModal = ({ onAdd, onClose, initialDate }: NovaReuniaoModalProps) => {
+const NovaReuniaoDrawer = ({ onAdd, onClose, initialDate }: NovaReuniaoDrawerProps) => {
   const [form, setForm] = useState({
     title: '',
     date: initialDate || formatDate(new Date()),
@@ -44,16 +52,14 @@ const NovaReuniaoModal = ({ onAdd, onClose, initialDate }: NovaReuniaoModalProps
     e.preventDefault();
     if (!form.title.trim() || !form.date || !form.time) return;
 
-    // Calcular hora de término baseado na duração
     const [hours, mins] = form.time.split(':').map(Number);
     const end = new Date(0, 0, 0, hours, mins + parseInt(form.duration));
     const timeStr = `${form.time} - ${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
-
     const isToday = form.date === formatDate(new Date());
 
     onAdd({
       title: form.title,
-      date: form.date, // armazenando ISO para ordernar melhor depois ou display local
+      date: form.date,
       time: timeStr,
       client: form.client || 'Interno',
       platform: form.platform,
@@ -62,115 +68,148 @@ const NovaReuniaoModal = ({ onAdd, onClose, initialDate }: NovaReuniaoModalProps
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Agendar Reunião" maxWidth="max-w-lg">
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Título / Assunto</label>
-            <input
-              type="text"
-              required
-              autoFocus
-              value={form.title}
-              onChange={e => setForm({ ...form, title: e.target.value })}
-              className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors placeholder-[#444]"
-              placeholder="Ex: Kickoff do Projeto XYZ"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+    <AnimatePresence>
+      <motion.div 
+        key="backdrop"
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          key="drawer"
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300, mass: 0.8 }}
+          className="w-full max-w-[480px] h-full bg-[#0a0a0a]/95 border-l border-white/5 shadow-2xl flex flex-col"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header Drawer */}
+          <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-br from-white/[0.02] to-transparent">
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Data</label>
-              <input
-                type="date"
-                required
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors [color-scheme:dark]"
-              />
+              <h2 className="text-xl font-bold text-white tracking-tight">Novo Agendamento</h2>
+              <p className="text-sm text-gray-400 mt-1">Preencha os detalhes do seu compromisso.</p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Início</label>
-                <input
-                  type="time"
-                  required
-                  value={form.time}
-                  onChange={e => setForm({ ...form, time: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors [color-scheme:dark]"
-                />
-              </div>
-              <div>
-                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Duração</label>
-                 <select
-                    value={form.duration}
-                    onChange={e => setForm({ ...form, duration: e.target.value })}
-                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors"
-                  >
-                    <option value="15">15 min</option>
-                    <option value="30">30 min</option>
-                    <option value="45">45 min</option>
-                    <option value="60">1 hora</option>
-                    <option value="90">1.5 horas</option>
-                    <option value="120">2 horas</option>
-                 </select>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Convidado / Cliente</label>
-              <input
-                type="text"
-                value={form.client}
-                onChange={e => setForm({ ...form, client: e.target.value })}
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors placeholder-[#444]"
-                placeholder="Ex: TechCorp"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Plataforma</label>
-              <div className="relative">
-                <Video className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={form.platform}
-                  onChange={e => setForm({ ...form, platform: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors placeholder-[#444]"
-                  placeholder="Ex: Google Meet, Zoom"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="pt-5 flex justify-end gap-3 border-t border-[#222]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 shadow-[0_0_15px_rgba(249,115,22,0.3)] text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all"
-            >
-              Confirmar Agendamento
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </form>
-    </Modal>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+            <div className="space-y-4">
+              {/* Título */}
+              <div className="group">
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Assunto / Título</label>
+                <input
+                  type="text" required autoFocus
+                  value={form.title}
+                  onChange={e => setForm({ ...form, title: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all shadow-inner"
+                  placeholder="Ex: Kickoff com Diretoria"
+                />
+              </div>
+
+              {/* Data e Hora */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="group">
+                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Data</label>
+                  <input
+                    type="date" required
+                    value={form.date}
+                    onChange={e => setForm({ ...form, date: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all [color-scheme:dark] shadow-inner"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Hora</label>
+                    <input
+                      type="time" required
+                      value={form.time}
+                      onChange={e => setForm({ ...form, time: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all [color-scheme:dark] shadow-inner"
+                    />
+                  </div>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Duração</label>
+                    <select
+                      value={form.duration}
+                      onChange={e => setForm({ ...form, duration: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-2 py-3 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all appearance-none cursor-pointer shadow-inner"
+                    >
+                      <option value="15">15 min</option>
+                      <option value="30">30 min</option>
+                      <option value="60">1 H</option>
+                      <option value="90">1.5 H</option>
+                      <option value="120">2 H</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cliente e Plataforma */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-white-[0.02] to-[#111] border border-white/5 space-y-4 shadow-sm">
+                <div className="group">
+                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Cliente / Contato</label>
+                  <div className="relative">
+                    <Users className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-orange-500 transition-colors" />
+                    <input
+                      type="text"
+                      value={form.client}
+                      onChange={e => setForm({ ...form, client: e.target.value })}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all placeholder-gray-600"
+                      placeholder="Nome do cliente ou empresa"
+                    />
+                  </div>
+                </div>
+                <div className="group">
+                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Local / Link</label>
+                  <div className="relative">
+                    <Video className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-orange-500 transition-colors" />
+                    <input
+                      type="text"
+                      value={form.platform}
+                      onChange={e => setForm({ ...form, platform: e.target.value })}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all placeholder-gray-600"
+                      placeholder="Google Meet, Zoom ou Endereço"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Form */}
+            <div className="mt-auto pt-6 flex gap-3">
+              <button type="button" onClick={onClose} className="flex-1 py-3 text-sm font-semibold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all">
+                Cancelar
+              </button>
+              <button type="submit" className="flex-[2] py-3 text-sm font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.3)] rounded-xl transition-all flex justify-center items-center gap-2">
+                Agendar Compromisso
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────────
 const Agendamento = () => {
   const { meetings, setMeetings, addMeeting } = useAppContext();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(formatDate(new Date()));
   const { showToast, ToastContainer } = useToast();
 
   const handleAddMeeting = (meeting: Omit<Meeting, 'id'>) => {
     addMeeting(meeting);
-    setIsModalOpen(false);
+    setIsDrawerOpen(false);
   };
 
   const handleDelete = useCallback((id: number | string) => {
@@ -188,13 +227,17 @@ const Agendamento = () => {
 
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const goToday = () => setCurrentDate(new Date());
+  const goToday = () => {
+    const d = new Date();
+    setCurrentDate(d);
+    setSelectedDateStr(formatDate(d));
+  };
 
   const daysInMonth = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth());
   const firstDay = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth());
   const todayStr = formatDate(new Date());
 
-  // Organizar reuniões por data ISO ('YYYY-MM-DD') para exibir no grid facilmente
+  // Mapear eventos por data (YYYY-MM-DD)
   const meetingsByDate = useMemo(() => {
     const map: Record<string, Meeting[]> = {};
     meetings.forEach(m => {
@@ -204,100 +247,141 @@ const Agendamento = () => {
         const d = new Date(); d.setDate(d.getDate() + 1);
         isoDate = formatDate(d);
       }
-      // Assuming existing items might be DD/MM or DD/MM/YYYY
       if (isoDate.includes('/')) {
         const parts = isoDate.split('/');
-        if (parts.length === 2) {
-          isoDate = `${currentDate.getFullYear()}-${parts[1]}-${parts[0]}`;
-        } else {
-          isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
+        isoDate = parts.length === 2 ? `${currentDate.getFullYear()}-${parts[1]}-${parts[0]}` : `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
       if (!map[isoDate]) map[isoDate] = [];
       map[isoDate].push(m);
     });
+    // Sort items em cada dia pelo tempo de inicio
+    Object.keys(map).forEach(date => {
+      map[date].sort((a,b) => a.time.localeCompare(b.time));
+    });
     return map;
   }, [meetings, currentDate, todayStr]);
 
-  // Lista lateral mostra selecionados ou próximos 10
-  const upcomingMeetings = useMemo(() => {
+  // Lista selecionada (Timeline)
+  const timelineMeetings = useMemo(() => {
+    let list = [];
     if (selectedDateStr && meetingsByDate[selectedDateStr]) {
-      return [...meetingsByDate[selectedDateStr]].sort((a, b) => a.time.localeCompare(b.time));
+      list = [...meetingsByDate[selectedDateStr]];
+    } else {
+      // Fallback: eventos dos próximos 7 dias
+      list = [...meetings]
+        .filter(m => {
+           let iso = m.date;
+           if (iso.toLowerCase() === 'hoje') iso = todayStr;
+           if (iso.includes('/')) {
+              const p = iso.split('/');
+              iso = p.length === 2 ? `${currentDate.getFullYear()}-${p[1]}-${p[0]}` : `${p[2]}-${p[1]}-${p[0]}`;
+           }
+           return iso >= todayStr;
+        })
+        .sort((a, b) => {
+           let isoA = a.date.includes('/') ? `${a.date.split('/')[2] || currentDate.getFullYear()}-${a.date.split('/')[1]}-${a.date.split('/')[0]}` : a.date;
+           let isoB = b.date.includes('/') ? `${b.date.split('/')[2] || currentDate.getFullYear()}-${b.date.split('/')[1]}-${b.date.split('/')[0]}` : b.date;
+           if (isoA === 'hoje') isoA = todayStr; if (isoB === 'hoje') isoB = todayStr;
+           if (isoA === isoB) return a.time.localeCompare(b.time);
+           return isoA.localeCompare(isoB);
+        })
+        .slice(0, 8);
     }
-    // Filter future
-    return [...meetings]
-      .filter(m => {
-         let iso = m.date;
-         if (iso.toLowerCase() === 'hoje') iso = todayStr;
-         if (iso.includes('/')) {
-            const p = iso.split('/');
-            iso = p.length === 2 ? `${currentDate.getFullYear()}-${p[1]}-${p[0]}` : `${p[2]}-${p[1]}-${p[0]}`;
-         }
-         return iso >= todayStr;
-      })
-      .sort((a, b) => {
-         let isoA = a.date.includes('/') ? `${a.date.split('/')[2] || currentDate.getFullYear()}-${a.date.split('/')[1]}-${a.date.split('/')[0]}` : a.date;
-         let isoB = b.date.includes('/') ? `${b.date.split('/')[2] || currentDate.getFullYear()}-${b.date.split('/')[1]}-${b.date.split('/')[0]}` : b.date;
-         if (isoA === 'hoje') isoA = todayStr; if (isoB === 'hoje') isoB = todayStr;
-         if (isoA === isoB) return a.time.localeCompare(b.time);
-         return isoA.localeCompare(isoB);
-      })
-      .slice(0, 15);
-  }, [meetings, selectedDateStr, meetingsByDate, todayStr, currentDate]);
+    
+    if (searchQuery.trim()) {
+       const q = searchQuery.toLowerCase();
+       return list.filter(m => m.title.toLowerCase().includes(q) || (m.client && m.client.toLowerCase().includes(q)));
+    }
+    return list;
+  }, [meetings, selectedDateStr, meetingsByDate, todayStr, currentDate, searchQuery]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="p-8 h-full flex flex-col bg-[#0a0a0a] text-white overflow-hidden"
+      initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+      className="p-8 h-full flex flex-col text-white overflow-hidden"
     >
-      <div className="max-w-[1500px] mx-auto w-full h-full flex flex-col">
-        <div className="flex items-center justify-between mb-8 flex-shrink-0">
+      <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col">
+        {/* Superior Actions & Status */}
+        <div className="flex items-center justify-between mb-6 flex-shrink-0">
           <div>
-            <h1 className="text-2xl font-bold mb-1">Central de Agendamentos</h1>
-            <p className="text-gray-400 text-sm">Gerencie reuniões, calls e compromissos importantes de forma centralizada.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight mb-1 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+              Agendamentos
+            </h1>
+            <p className="text-gray-400 text-sm">Visualize e coordene as próximas Calls e reuniões estrategicas.</p>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(249,115,22,0.25)] border border-orange-500/20"
+            onClick={() => setIsDrawerOpen(true)}
+            className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.4)] hover:shadow-[0_0_30px_rgba(249,115,22,0.6)] transition-all"
           >
-            <CalendarIcon className="w-4 h-4" /> Agendar Nova
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+            <CalendarIcon className="w-4 h-4 relative z-10" /> 
+            <span className="relative z-10">Agendar Call</span>
           </button>
         </div>
 
-        <div className="flex gap-8 flex-1 overflow-hidden min-h-0">
-          {/* Main Calendar View */}
-          <div className="flex-1 bg-[#141414] border border-[#222] rounded-2xl flex flex-col overflow-hidden shadow-xl">
+        {/* Dashboard Cards (KPIs) */}
+        <div className="flex gap-4 mb-8 flex-shrink-0 h-[100px]">
+           <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center p-5 relative overflow-hidden group hover:border-white/10 transition-colors">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+              <div>
+                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5 group-hover:text-orange-400 transition-colors">Total este mês</p>
+                 <div className="text-3xl font-bold">{Object.values(meetingsByDate).flat().length}</div>
+              </div>
+           </div>
+           <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center p-5 relative overflow-hidden group hover:border-white/10 transition-colors">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+              <div>
+                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5 group-hover:text-emerald-400 transition-colors">Próximos 7 dias</p>
+                 <div className="text-3xl font-bold">{timelineMeetings.length}</div>
+              </div>
+           </div>
+           <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center p-5 relative overflow-hidden group hover:border-white/10 transition-colors">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+              <div>
+                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5 group-hover:text-blue-400 transition-colors">Status Hoje</p>
+                 <div className="text-xl font-medium text-gray-300">
+                    {meetingsByDate[todayStr]?.length ? <span className="text-white">{meetingsByDate[todayStr].length} eventos hoje</span> : 'Dia limpo, sem reuniões'}
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        {/* Content Area flex */}
+        <div className="flex gap-6 flex-1 overflow-hidden min-h-0 relative">
+          
+          {/* Main Calendar View (Glassmorphic Window) */}
+          <div className="flex-1 rounded-3xl bg-[#111]/70 backdrop-blur-xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative z-10">
             {/* Header Calendário */}
-            <div className="flex items-center justify-between p-6 border-b border-[#222] bg-[#1a1a1a]/50">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#222] to-[#111] border border-white/5 flex flex-col items-center justify-center shadow-inner">
-                   <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">{monthNames[currentDate.getMonth()].substring(0,3)}</div>
-                   <div className="text-sm font-semibold">{currentDate.getFullYear()}</div>
+                <div className="flex-shrink-0 w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+                   <div className="text-[9px] font-bold text-orange-500 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)}</div>
+                   <div className="text-sm font-bold text-gray-200">{currentDate.getFullYear()}</div>
                 </div>
-                <h2 className="text-xl font-bold tracking-tight">
-                  {monthNames[currentDate.getMonth()]} <span className="text-gray-500 font-normal">{currentDate.getFullYear()}</span>
+                <h2 className="text-2xl font-bold tracking-tight text-white/90">
+                  {monthNames[currentDate.getMonth()]}
                 </h2>
               </div>
-              <div className="flex items-center gap-2 p-1 bg-[#0a0a0a] rounded-lg border border-[#222]">
-                <button onClick={prevMonth} className="p-2 hover:bg-[#222] rounded-md text-gray-400 hover:text-white transition-colors">
+              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md p-1.5 rounded-xl border border-white/5">
+                <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
                    <ChevronLeft className="w-4 h-4" />
                 </button>
-                <button onClick={goToday} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider bg-[#222] hover:bg-[#333] rounded-md text-white transition-colors">Hoje</button>
-                <button onClick={nextMonth} className="p-2 hover:bg-[#222] rounded-md text-gray-400 hover:text-white transition-colors">
+                <button onClick={goToday} className="px-4 h-8 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 rounded-lg text-white transition-colors">Hoje</button>
+                <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
                    <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Grid Days Header */}
-            <div className="grid grid-cols-7 border-b border-[#222] bg-[#0a0a0a]/50 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+            <div className="grid grid-cols-7 border-b border-white/5 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                <div key={day} className="py-3 text-center">{day}</div>
+                <div key={day} className="py-4 text-center">{day}</div>
               ))}
             </div>
 
             {/* Grid Body */}
-            <div className="flex-1 bg-[#222] gap-px grid grid-cols-7 grid-rows-5 overflow-y-auto custom-scrollbar p-px">
+            <div className="flex-1 bg-white/[0.01] grid grid-cols-7 grid-rows-5 overflow-y-auto custom-scrollbar p-1 gap-1">
                {Array.from({ length: 35 }).map((_, i) => {
                   const dayNum = i - firstDay + 1;
                   const isCurrentMonth = dayNum > 0 && dayNum <= daysInMonth;
@@ -307,136 +391,172 @@ const Agendamento = () => {
                   const isSelected = dateIso === selectedDateStr;
 
                   return (
-                    <div
+                    <motion.div
+                      layoutId={`day-${dateIso || i}`}
                       key={i}
                       onClick={() => {
                         if (dateIso) {
-                            if (selectedDateStr === dateIso) setSelectedDateStr(null);
-                            else setSelectedDateStr(dateIso);
+                            setSelectedDateStr(dateIso);
                         }
                       }}
-                      className={`min-h-[100px] p-2 flex flex-col transition-colors cursor-pointer group ${
-                        !isCurrentMonth ? 'bg-[#0a0a0a]/50' :
-                        isSelected ? 'bg-orange-500/10 ring-1 ring-inset ring-orange-500' :
-                        'bg-[#0a0a0a] hover:bg-[#111]'
+                      className={`min-h-[110px] rounded-2xl p-2.5 flex flex-col transition-all cursor-pointer group relative overflow-hidden ${
+                        !isCurrentMonth ? 'opacity-30 pointer-events-none' :
+                        isSelected ? 'bg-orange-500/10 ring-1 ring-inset ring-orange-500/50 shadow-[inset_0_0_20px_rgba(249,115,22,0.1)]' :
+                        'bg-white/[0.02] hover:bg-white/[0.05] border border-transparent hover:border-white/5'
                       }`}
                     >
-                      <div className="flex justify-between items-start mb-1">
-                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium ${
-                           isTodayBox ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' :
-                           !isCurrentMonth ? 'text-gray-700' :
-                           isSelected ? 'text-orange-400' : 'text-gray-400 group-hover:text-gray-200'
+                      <div className="flex justify-between items-start mb-2 relative z-10">
+                        <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                           isTodayBox ? 'bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.5)]' :
+                           isSelected ? 'text-orange-400' : 'text-gray-400 group-hover:text-white'
                         }`}>
                           {isCurrentMonth ? dayNum : ''}
                         </span>
+                        
+                        {/* Hover Action to Add Meeting */}
                         {isCurrentMonth && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-white/10 text-gray-500 hover:text-white transition-all"
+                            onClick={(e) => { 
+                               e.stopPropagation(); 
+                               setSelectedDateStr(dateIso);
+                               setIsDrawerOpen(true); 
+                            }}
+                            className="w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white/10 text-gray-400 hover:text-orange-400 transition-all transform scale-90 group-hover:scale-100"
+                            title="Agendar neste dia"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         )}
                       </div>
 
-                      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-1">
-                         {dayMeetings.map(m => (
-                            <div key={m.id} className="bg-[#1a1a1a] border border-[#333] px-2 py-1.5 rounded-md flex flex-col gap-0.5 group/item hover:border-orange-500/50 transition-colors">
-                               <div className="flex items-center justify-between">
-                                  <div className="text-[10px] font-bold text-orange-400">{m.time.split('-')[0].trim()}</div>
-                               </div>
-                               <div className="text-xs text-gray-300 truncate font-medium group-hover/item:text-white transition-colors" title={m.title}>{m.title}</div>
-                            </div>
-                         ))}
+                      {/* Chips das Meetings */}
+                      <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar no-scrollbar relative z-10">
+                         {dayMeetings.slice(0, 3).map(m => {
+                            const colors = getPlatformColor(m.platform);
+                            return (
+                              <div key={m.id} className={`${colors.bg} ${colors.text} px-2 py-1 rounded-md flex items-center gap-1.5 font-medium text-[10px] whitespace-nowrap overflow-hidden transition-all group-hover:opacity-100 opacity-80 border border-white/5`}>
+                                 <div className={`w-1 h-1 rounded-full ${colors.dot} flex-shrink-0 animate-pulse`} />
+                                 <span className="truncate">{m.time.split('-')[0].trim()} - {m.title}</span>
+                              </div>
+                            );
+                         })}
+                         {dayMeetings.length > 3 && (
+                            <div className="text-[10px] font-medium text-gray-500 pl-1">+ {dayMeetings.length - 3} mais</div>
+                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                })}
             </div>
           </div>
 
-          {/* Sidebar Compromissos */}
-          <div className="w-[380px] bg-[#141414] border border-[#222] rounded-2xl flex flex-col shadow-xl overflow-hidden flex-shrink-0">
-            <div className="p-6 border-b border-[#222] bg-gradient-to-b from-[#1a1a1a] to-[#141414]">
-               <h3 className="font-bold text-lg text-white mb-1">
-                 {selectedDateStr ? `Eventos em ${toDisplayDate(selectedDateStr)}` : 'Próximos Compromissos'}
+          {/* Sidebar / Timeline View */}
+          <div className="w-[420px] rounded-3xl bg-black/20 border border-white/5 flex flex-col shadow-2xl overflow-hidden flex-shrink-0 backdrop-blur-xl">
+            {/* Header Timeline */}
+            <div className="px-6 py-5 border-b border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent sticky top-0 z-20 backdrop-blur-md">
+               <h3 className="font-extrabold text-xl text-white mb-1.5 flex items-center gap-2">
+                 {selectedDateStr === todayStr && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                 {selectedDateStr ? toDisplayDate(selectedDateStr) : 'Próximos Compromissos'}
                </h3>
-               <p className="text-xs text-gray-500">
-                 {upcomingMeetings.length} {upcomingMeetings.length === 1 ? 'reunião agendada' : 'reuniões agendadas'}
+               <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">
+                 {timelineMeetings.length} {timelineMeetings.length === 1 ? 'reunião' : 'reuniões'} agendadas
                </p>
+               <div className="relative">
+                 <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                 <input
+                   type="text"
+                   value={searchQuery}
+                   onChange={e => setSearchQuery(e.target.value)}
+                   placeholder="Buscar reuniões..."
+                   className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 focus:bg-orange-500/5 transition-all placeholder-gray-600 shadow-inner"
+                 />
+               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 relative">
               <AnimatePresence mode="popLayout">
-                {upcomingMeetings.length === 0 ? (
-                   <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="pt-10 text-center flex flex-col items-center gap-3 opacity-50">
-                      <CalendarIcon className="w-10 h-10 text-gray-600" />
-                      <p className="text-sm font-medium">Livre! Nenhum compromisso.</p>
+                {timelineMeetings.length === 0 ? (
+                   <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="absolute inset-0 flex flex-col items-center justify-center gap-4 opacity-40">
+                      <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center">
+                         <CalendarIcon className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <p className="text-sm font-medium tracking-wide">Dia limpo. Aproveite!</p>
                    </motion.div>
                 ) : (
-                  upcomingMeetings.map((meeting) => (
-                    <motion.div
-                      key={meeting.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, x: 20 }}
-                      className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 hover:border-orange-500/30 transition-all cursor-pointer group shadow-sm hover:shadow-xl hover:shadow-orange-500/5 relative"
-                    >
-                      {/* Borda decorativa lateral */}
-                      <div className="absolute left-0 top-3 bottom-3 w-1 bg-orange-500/20 group-hover:bg-orange-500 rounded-r-full transition-colors" />
-
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(meeting.id); }}
-                        className="absolute top-4 right-4 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Cancelar Reunião"
-                      >
-                         <Trash2 className="w-4 h-4" />
-                      </button>
-
-                      <div className="flex items-start justify-between mb-3 pl-2 pr-6">
-                        <h4 className="font-semibold text-sm group-hover:text-orange-400 transition-colors leading-tight">{meeting.title}</h4>
-                      </div>
-
-                      <div className="space-y-2.5 text-xs text-gray-400 pl-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded bg-[#222] flex items-center justify-center flex-shrink-0 text-gray-300">
-                             <Clock className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="font-medium text-gray-300">
-                             {!selectedDateStr && <span className="mr-1">{toDisplayDate(meeting.date)} •</span>}
-                             {meeting.time}
-                          </span>
-                        </div>
-                        {meeting.client && (
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center flex-shrink-0 text-blue-400">
-                              <Users className="w-3.5 h-3.5" />
+                  <div className="relative border-l border-white/10 ml-[23px] pl-6 pb-4 space-y-8 mt-2">
+                    {timelineMeetings.map((meeting, index) => {
+                       const colors = getPlatformColor(meeting.platform);
+                       return (
+                        <motion.div
+                          key={meeting.id}
+                          layout
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="relative group"
+                        >
+                          {/* Dot na linha do tempo */}
+                          <div className={`absolute -left-[30px] top-1.5 w-3 h-3 rounded-full ${colors.dot} ring-4 ring-[#111] shadow-[0_0_10px_currentColor]`} style={{ color: "currentColor" }} />
+                          
+                          {/* Card */}
+                          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 hover:bg-white/[0.05] hover:border-white/10 transition-all cursor-pointer backdrop-blur-md shadow-lg group-hover:shadow-2xl">
+                            
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                               <div className="flex flex-col gap-1">
+                                  <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">{meeting.time}</div>
+                                  <h4 className="font-bold text-white text-base leading-tight group-hover:text-orange-400 transition-colors pr-6">{meeting.title}</h4>
+                               </div>
+                               <button
+                                 onClick={(e) => { e.stopPropagation(); handleDelete(meeting.id); }}
+                                 className="absolute top-0 right-0 p-1.5 bg-black/40 backdrop-blur-sm rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                                 title="Cancelar Reunião"
+                               >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                               </button>
                             </div>
-                            <span className="truncate flex-1">{meeting.client}</span>
-                          </div>
-                        )}
-                        {meeting.platform && (
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-green-500/10 flex items-center justify-center flex-shrink-0 text-green-400">
-                              <Video className="w-3.5 h-3.5" />
+
+                            <div className="flex flex-col gap-2.5 text-sm">
+                              {meeting.client && (
+                                <div className="flex items-center gap-3 text-gray-300">
+                                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-gray-400">
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <span className="font-medium truncate">{meeting.client}</span>
+                                </div>
+                              )}
+                              {meeting.platform && (
+                                <div className="flex items-center gap-3 text-gray-300">
+                                  <div className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center flex-shrink-0 ${colors.text}`}>
+                                    {meeting.platform.toLowerCase().includes('presencial') ? <MapPin className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                                  </div>
+                                  <span className="font-medium truncate">{meeting.platform}</span>
+                                </div>
+                              )}
                             </div>
-                            <span className="truncate flex-1">{meeting.platform}</span>
                           </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))
+                        </motion.div>
+                       )
+                    })}
+                  </div>
                 )}
               </AnimatePresence>
+            </div>
+            
+            {/* Quick Add at Bottom of Timeline */}
+            <div className="p-4 border-t border-white/5 bg-black/20 backdrop-blur-md">
+               <button 
+                 onClick={() => setIsDrawerOpen(true)}
+                 className="w-full py-3.5 rounded-xl border border-dashed border-white/20 text-sm font-semibold text-gray-400 hover:text-white hover:border-orange-500/50 hover:bg-orange-500/10 active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                  <Plus className="w-4 h-4" /> Adicionar na Timeline
+               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <AnimatePresence>
-        {isModalOpen && <NovaReuniaoModal onAdd={handleAddMeeting} onClose={() => setIsModalOpen(false)} initialDate={selectedDateStr || undefined} />}
-      </AnimatePresence>
+      {isDrawerOpen && <NovaReuniaoDrawer onAdd={handleAddMeeting} onClose={() => setIsDrawerOpen(false)} initialDate={selectedDateStr || undefined} />}
       <ToastContainer />
     </motion.div>
   );

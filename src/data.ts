@@ -1,6 +1,6 @@
 import { 
   Status, Task, ClientStatus, Client, 
-  Column, Lead, Transaction, ContentItem, Meeting 
+  Column, Lead, Transaction, ContentItem, Meeting, CourseTrack 
 } from './types';
 
 // ─── GESTOR / CLICKUP DATA ────────────────────────────────────────────────────
@@ -106,11 +106,24 @@ export const crmColumns: Column[] = [
 ];
 
 export const crmLeads: Lead[] = [
-  { id: 'l1', columnId: 'agendada', title: 'TechCorp Solutions', value: 15000, date: '31/10/2023' },
-  { id: 'l2', columnId: 'agendada', title: 'EducaMais EAD', value: 8500, date: '04/11/2023' },
-  { id: 'l3', columnId: 'agendada', title: 'Clinica Sorriso', value: 5000, date: '09/11/2023' },
-  { id: 'l4', columnId: 'leads', title: 'Nova Startup XYZ', value: 12000, date: '15/11/2023' },
-  { id: 'l5', columnId: 'proposta', title: 'Indústria ABC', value: 35000, date: '12/11/2023' },
+  { 
+    id: 'l1', columnId: 'agendada', title: 'TechCorp Solutions', value: 15000, date: '2023-10-31',
+    contactName: 'Carlos Silva', email: 'carlos@techcorp.com', phone: '(11) 99999-1111',
+    source: 'Inbound', tags: ['Enterprise', 'Tech'],
+    notes: 'Cliente demonstrou muito interesse na solução de automação.',
+    activities: [
+      { id: 'a1', type: 'note', content: 'Primeira call feita', date: '2023-10-25' },
+      { id: 'a2', type: 'status_change', content: 'Movido para Reunião Agendada', date: '2023-10-28' }
+    ]
+  },
+  { 
+    id: 'l2', columnId: 'agendada', title: 'EducaMais EAD', value: 8500, date: '2023-11-04',
+    contactName: 'Amanda Oliveira', email: 'amanda@educamais.com',
+    source: 'Indicação', tags: ['Educação']
+  },
+  { id: 'l3', columnId: 'agendada', title: 'Clinica Sorriso', value: 5000, date: '2023-11-09' },
+  { id: 'l4', columnId: 'leads', title: 'Nova Startup XYZ', value: 12000, date: '2023-11-15' },
+  { id: 'l5', columnId: 'proposta', title: 'Indústria ABC', value: 35000, date: '2023-11-12', tags: ['VIP'] },
 ];
 
 // ─── FINANCEIRO DATA ──────────────────────────────────────────────────────────
@@ -163,4 +176,12 @@ export const initialMeetings: Meeting[] = [
   { id: 1, title: 'Apresentação de Resultados - Q3', date: 'Hoje', time: '14:00 - 15:00', client: 'TechCorp', platform: 'Google Meet', isToday: true },
   { id: 2, title: 'Reunião de Alinhamento Semanal', date: 'Amanhã', time: '10:00 - 11:00', client: 'Equipe Interna', platform: 'Zoom', isToday: false },
   { id: 3, title: 'Kickoff Novo Projeto', date: '15/11', time: '16:30 - 17:30', client: 'EducaMais', platform: 'Google Meet', isToday: false },
+];
+
+// ─── ACADEMY DATA ──────────────────────────────────────────────────────────────
+export const academyTracks: CourseTrack[] = [
+  { id: 1, img: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=2070&auto=format&fit=crop', title: 'Onboarding', duration: '2h 30m', videos: 5 },
+  { id: 2, img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2015&auto=format&fit=crop', title: 'Gestão de Comercial', duration: '5h 15m', videos: 12 },
+  { id: 3, img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1974&auto=format&fit=crop', title: 'Design & Criativos', duration: '3h 45m', videos: 8 },
+  { id: 4, img: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?q=80&w=2070&auto=format&fit=crop', title: 'Atendimento Pró', duration: '1h 20m', videos: 3 },
 ];
