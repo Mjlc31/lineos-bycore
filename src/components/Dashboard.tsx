@@ -76,7 +76,6 @@ const Dashboard = ({ onNavigate }: { onNavigate: (tab: any) => void }) => {
   const colorMap: Record<string, { bg: string; text: string; glow: string; border: string }> = {
     red:  { bg: 'bg-red-500/10', text: 'text-red-400', glow: 'hover:shadow-red-500/5', border: 'hover:border-red-500/20' },
     emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', glow: 'hover:shadow-emerald-500/5', border: 'hover:border-emerald-500/20' },
-    red:     { bg: 'bg-red-500/10', text: 'text-red-400', glow: 'hover:shadow-red-500/5', border: 'hover:border-red-500/20' },
     amber:   { bg: 'bg-amber-500/10', text: 'text-amber-400', glow: 'hover:shadow-amber-500/5', border: 'hover:border-amber-500/20' },
     violet:  { bg: 'bg-violet-500/10', text: 'text-violet-400', glow: 'hover:shadow-violet-500/5', border: 'hover:border-violet-500/20' },
   };
