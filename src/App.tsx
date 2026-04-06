@@ -11,6 +11,7 @@ import Agendamento from './components/Agendamento';
 import CommandPalette from './components/CommandPalette';
 import Dashboard from './components/Dashboard';
 import LoginPage from './components/LoginPage';
+import LineLogo from './components/LineLogo';
 import { useAuth } from './context/AuthContext';
 
 function App() {
@@ -59,21 +60,40 @@ function App() {
   // Auth loading state
   if (isAuthLoading) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ background: 'var(--surface-0)' }}>
+      <div className="flex items-center justify-center h-screen bg-[#050507]">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="flex flex-col items-center gap-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col items-center gap-8"
         >
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border-2 border-white/5" />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[var(--color-primary)] animate-spin" />
-            <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-white/30 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+          <div className="relative">
+            <motion.div
+              animate={{ 
+                scale: [1, 1.1, 1],
+                opacity: [0.5, 1, 0.5]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="absolute inset-0 blur-2xl bg-[#E31837]/20 rounded-full"
+            />
+            <div className="relative bg-[#0f0f12] p-6 rounded-2xl border border-white/5 shadow-2xl">
+              <LineLogo className="w-12 h-12 text-[#E31837]" />
+            </div>
+            {/* Subtle spinner ring */}
+            <div className="absolute -inset-2 border border-[#E31837]/20 rounded-3xl animate-pulse" />
           </div>
-          <div className="text-center">
-            <p className="text-white/80 text-[13px] font-medium tracking-wide">LINE OS</p>
-            <p className="text-white/30 text-xs mt-1">Verificando sessão...</p>
+
+          <div className="text-center space-y-2">
+            <h2 className="text-[#fafafa] font-bold tracking-[0.2em] text-sm font-sans">LINE OS</h2>
+            <div className="flex items-center justify-center gap-1">
+              <span className="w-1 h-1 bg-[#E31837] rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-1 h-1 bg-[#E31837] rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-1 h-1 bg-[#E31837] rounded-full animate-bounce" />
+            </div>
           </div>
         </motion.div>
       </div>

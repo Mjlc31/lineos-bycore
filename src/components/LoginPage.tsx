@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Zap } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import LineLogo from './LineLogo';
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuth();
@@ -32,12 +33,11 @@ const LoginPage: React.FC = () => {
       setError(loginError);
       setIsSubmitting(false);
     }
-    // If successful, AuthContext will update and App will re-render
   };
 
   return (
     <div className="login-page">
-      {/* Animated background */}
+      {/* Animated background — Updated for Red Line identity */}
       <div className="login-bg">
         <div className="login-bg-orb login-bg-orb--1" />
         <div className="login-bg-orb login-bg-orb--2" />
@@ -51,18 +51,21 @@ const LoginPage: React.FC = () => {
         className="login-card"
         initial={{ opacity: 0, y: 32, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
+        {/* Glow effect */}
+        <div className="login-card-glow" />
+
         {/* Logo / Brand */}
         <motion.div
           className="login-brand"
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
         >
-          <div className="login-logo">
-            <div className="login-logo-icon">
-              <Zap size={24} strokeWidth={2.5} />
+          <div className="login-logo-container">
+            <div className="login-logo-wrapper">
+              <LineLogo className="login-logo-svg" />
             </div>
           </div>
           <h1 className="login-title">LINE OS</h1>
@@ -75,12 +78,12 @@ const LoginPage: React.FC = () => {
           className="login-form"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.35, duration: 0.5 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
         >
           {/* Email field */}
           <div className={`login-field ${focusedField === 'email' ? 'login-field--focused' : ''} ${email ? 'login-field--filled' : ''}`}>
             <label className="login-label" htmlFor="login-email">
-              <Mail size={15} />
+              <Mail size={14} />
               <span>E-mail</span>
             </label>
             <input
@@ -91,7 +94,7 @@ const LoginPage: React.FC = () => {
               onChange={(e) => { setEmail(e.target.value); setError(null); }}
               onFocus={() => setFocusedField('email')}
               onBlur={() => setFocusedField(null)}
-              placeholder="seu@email.com"
+              placeholder="Digite seu e-mail corporativo"
               autoComplete="email"
               className="login-input"
               disabled={isSubmitting}
@@ -101,7 +104,7 @@ const LoginPage: React.FC = () => {
           {/* Password field */}
           <div className={`login-field ${focusedField === 'password' ? 'login-field--focused' : ''} ${password ? 'login-field--filled' : ''}`}>
             <label className="login-label" htmlFor="login-password">
-              <Lock size={15} />
+              <Lock size={14} />
               <span>Senha</span>
             </label>
             <div className="login-input-wrapper">
@@ -138,10 +141,12 @@ const LoginPage: React.FC = () => {
                 initial={{ opacity: 0, y: -8, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: -8, height: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
               >
-                <AlertCircle size={14} />
-                <span>{error}</span>
+                <div className="login-error-content">
+                  <AlertCircle size={14} />
+                  <span>{error}</span>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -152,14 +157,16 @@ const LoginPage: React.FC = () => {
             className="login-submit"
             disabled={isSubmitting}
             whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.985 }}
           >
             {isSubmitting ? (
               <div className="login-spinner" />
             ) : (
               <>
-                <span>Entrar</span>
-                <ArrowRight size={16} />
+                <span className="login-submit-text">Acessar Plataforma</span>
+                <div className="login-submit-icon">
+                  <ArrowRight size={16} />
+                </div>
               </>
             )}
           </motion.button>
@@ -170,17 +177,25 @@ const LoginPage: React.FC = () => {
           className="login-footer"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
         >
           <div className="login-divider">
-            <span>Acesso restrito à equipe LINE</span>
+            <span>Acesso Restrito</span>
           </div>
-          <p className="login-copyright">© {new Date().getFullYear()} Agência LINE · Todos os direitos reservados</p>
+          <p className="login-copyright">© {new Date().getFullYear()} Agência LINE · Powered by Silicon Valley Design</p>
         </motion.div>
       </motion.div>
 
       <style>{`
         .login-page {
+          --login-primary: #E31837;
+          --login-primary-dark: #B2122B;
+          --login-bg: #050507;
+          --login-surface: rgba(13, 13, 17, 0.7);
+          --login-border: rgba(255, 255, 255, 0.08);
+          --login-text: #fafafa;
+          --login-text-muted: #a1a1aa;
+          
           position: relative;
           display: flex;
           align-items: center;
@@ -189,7 +204,8 @@ const LoginPage: React.FC = () => {
           min-height: 100dvh;
           padding: 24px;
           overflow: hidden;
-          background: #050507;
+          background: var(--login-bg);
+          font-family: 'Inter', sans-serif;
         }
 
         /* ─── Animated Background ──────────────────────────────────────── */
@@ -202,47 +218,47 @@ const LoginPage: React.FC = () => {
         .login-bg-orb {
           position: absolute;
           border-radius: 50%;
-          filter: blur(100px);
-          opacity: 0.35;
-          animation: orbFloat 20s ease-in-out infinite;
+          filter: blur(120px);
+          opacity: 0.3;
+          animation: orbFloat 25s ease-in-out infinite;
         }
         .login-bg-orb--1 {
-          width: 600px;
-          height: 600px;
-          background: radial-gradient(circle, #6366f1 0%, transparent 70%);
-          top: -15%;
+          width: 700px;
+          height: 700px;
+          background: radial-gradient(circle, var(--login-primary) 0%, transparent 70%);
+          top: -20%;
           left: -10%;
-          animation-duration: 22s;
+          animation-duration: 28s;
         }
         .login-bg-orb--2 {
-          width: 500px;
-          height: 500px;
-          background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
-          bottom: -20%;
+          width: 600px;
+          height: 600px;
+          background: radial-gradient(circle, #f97316 0%, transparent 70%);
+          bottom: -25%;
           right: -10%;
-          animation-delay: -8s;
-          animation-duration: 18s;
+          animation-delay: -10s;
+          animation-duration: 22s;
+          opacity: 0.15;
         }
         .login-bg-orb--3 {
-          width: 350px;
-          height: 350px;
-          background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
-          top: 50%;
-          left: 60%;
-          animation-delay: -14s;
-          animation-duration: 25s;
-          opacity: 0.2;
+          width: 400px;
+          height: 400px;
+          background: radial-gradient(circle, var(--login-primary) 0%, transparent 70%);
+          top: 40%;
+          left: 55%;
+          animation-delay: -15s;
+          animation-duration: 30s;
+          opacity: 0.1;
         }
         @keyframes orbFloat {
           0%, 100% { transform: translate(0, 0) scale(1); }
-          25% { transform: translate(30px, -40px) scale(1.05); }
-          50% { transform: translate(-20px, 20px) scale(0.95); }
-          75% { transform: translate(40px, 30px) scale(1.02); }
+          33% { transform: translate(50px, -60px) scale(1.1); }
+          66% { transform: translate(-30px, 40px) scale(0.9); }
         }
         .login-bg-grid {
           position: absolute;
           inset: 0;
-          background-image:
+          background-image: 
             linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
             linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
           background-size: 64px 64px;
@@ -252,8 +268,9 @@ const LoginPage: React.FC = () => {
         .login-bg-noise {
           position: absolute;
           inset: 0;
-          opacity: 0.03;
+          opacity: 0.04;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          pointer-events: none;
         }
 
         /* ─── Card ─────────────────────────────────────────────────────── */
@@ -261,91 +278,102 @@ const LoginPage: React.FC = () => {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 420px;
-          padding: 48px 40px 40px;
-          background: rgba(12, 12, 16, 0.75);
-          backdrop-filter: blur(40px) saturate(180%);
-          -webkit-backdrop-filter: blur(40px) saturate(180%);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 24px;
-          box-shadow:
+          max-width: 440px;
+          padding: 56px 48px 48px;
+          background: var(--login-surface);
+          backdrop-filter: blur(40px) saturate(200%);
+          -webkit-backdrop-filter: blur(40px) saturate(200%);
+          border: 1px solid var(--login-border);
+          border-radius: 28px;
+          box-shadow: 
             0 0 0 1px rgba(255, 255, 255, 0.03),
-            0 24px 80px -12px rgba(0, 0, 0, 0.6),
-            0 0 60px -10px rgba(99, 102, 241, 0.08);
+            0 24px 80px -12px rgba(0, 0, 0, 0.8),
+            0 0 60px -10px rgba(227, 24, 55, 0.12);
+        }
+        .login-card-glow {
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 140px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, var(--login-primary), transparent);
+          box-shadow: 0 0 20px 2px var(--login-primary);
+          opacity: 0.5;
         }
 
         /* ─── Brand ────────────────────────────────────────────────────── */
         .login-brand {
           text-align: center;
-          margin-bottom: 36px;
+          margin-bottom: 44px;
         }
-        .login-logo {
+        .login-logo-container {
           display: flex;
           justify-content: center;
-          margin-bottom: 20px;
+          margin-bottom: 24px;
         }
-        .login-logo-icon {
-          width: 56px;
-          height: 56px;
+        .login-logo-wrapper {
+          width: 64px;
+          height: 64px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
-          border-radius: 16px;
-          color: white;
-          box-shadow:
-            0 0 24px -4px rgba(99, 102, 241, 0.4),
-            0 8px 16px -8px rgba(99, 102, 241, 0.3);
+          background: linear-gradient(145deg, #16161a, #09090b);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 18px;
+          color: var(--login-primary);
+          box-shadow: 
+            0 8px 32px -8px rgba(0, 0, 0, 0.5),
+            inset 0 0 10px rgba(227, 24, 55, 0.1);
           position: relative;
         }
-        .login-logo-icon::after {
-          content: '';
-          position: absolute;
-          inset: -1px;
-          border-radius: 17px;
-          background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 50%);
-          pointer-events: none;
+        .login-logo-svg {
+          width: 32px;
+          height: 32px;
+          filter: drop-shadow(0 0 8px rgba(227, 24, 55, 0.3));
         }
         .login-title {
-          font-size: 26px;
+          font-family: 'Outfit', sans-serif;
+          font-size: 28px;
           font-weight: 800;
           color: #fafafa;
-          letter-spacing: -0.03em;
+          letter-spacing: -0.04em;
           margin: 0;
-          line-height: 1.2;
+          line-height: 1.1;
         }
         .login-subtitle {
           font-size: 13px;
-          color: rgba(161, 161, 170, 0.8);
-          margin-top: 6px;
+          color: var(--login-text-muted);
+          margin-top: 8px;
           font-weight: 400;
-          letter-spacing: 0;
+          letter-spacing: 0.01em;
+          opacity: 0.8;
         }
 
         /* ─── Form ─────────────────────────────────────────────────────── */
         .login-form {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 20px;
         }
         .login-field {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
         }
         .login-label {
           display: flex;
           align-items: center;
-          gap: 6px;
-          font-size: 12px;
-          font-weight: 500;
-          color: rgba(161, 161, 170, 0.6);
+          gap: 8px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--login-text-muted);
           text-transform: uppercase;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.1em;
           transition: color 0.2s;
         }
         .login-field--focused .login-label {
-          color: #818cf8;
+          color: var(--login-primary);
         }
         .login-input-wrapper {
           position: relative;
@@ -354,72 +382,73 @@ const LoginPage: React.FC = () => {
         }
         .login-input {
           width: 100%;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
+          padding: 14px 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 14px;
           color: #fafafa;
           font-size: 14px;
           font-family: inherit;
-          transition: all 0.2s ease;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           outline: none;
         }
         .login-input::placeholder {
-          color: rgba(161, 161, 170, 0.3);
+          color: rgba(161, 161, 170, 0.25);
         }
         .login-field--focused .login-input {
-          border-color: rgba(99, 102, 241, 0.5);
-          background: rgba(99, 102, 241, 0.04);
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+          border-color: rgba(227, 24, 55, 0.4);
+          background: rgba(227, 24, 55, 0.02);
+          box-shadow: 0 0 0 4px rgba(227, 24, 55, 0.06);
         }
         .login-field--filled .login-input {
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.04);
           border-color: rgba(255, 255, 255, 0.1);
         }
         .login-input:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
-        .login-input-wrapper .login-input {
-          padding-right: 44px;
-        }
-
+        
         /* ─── Toggle PW ────────────────────────────────────────────────── */
         .login-toggle-pw {
           position: absolute;
-          right: 12px;
+          right: 14px;
           top: 50%;
           transform: translateY(-50%);
           background: none;
           border: none;
-          color: rgba(161, 161, 170, 0.5);
+          color: rgba(161, 161, 170, 0.4);
           cursor: pointer;
-          padding: 4px;
-          border-radius: 6px;
+          padding: 6px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: color 0.15s;
+          transition: all 0.2s;
         }
         .login-toggle-pw:hover {
-          color: rgba(161, 161, 170, 0.9);
+          color: #fafafa;
+          background: rgba(255, 255, 255, 0.05);
         }
 
         /* ─── Error ────────────────────────────────────────────────────── */
         .login-error {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 14px;
-          background: rgba(239, 68, 68, 0.08);
-          border: 1px solid rgba(239, 68, 68, 0.15);
-          border-radius: 10px;
-          color: #fca5a5;
-          font-size: 13px;
           overflow: hidden;
         }
-        .login-error svg {
+        .login-error-content {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 16px;
+          background: rgba(227, 24, 55, 0.08);
+          border: 1px solid rgba(227, 24, 55, 0.15);
+          border-radius: 12px;
+          color: #fecaca;
+          font-size: 13px;
+        }
+        .login-error-content svg {
           flex-shrink: 0;
+          color: var(--login-primary);
         }
 
         /* ─── Submit ───────────────────────────────────────────────────── */
@@ -427,48 +456,64 @@ const LoginPage: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 12px;
           width: 100%;
-          padding: 13px 20px;
-          margin-top: 4px;
-          background: linear-gradient(135deg, #6366f1, #7c3aed);
+          padding: 15px 24px;
+          margin-top: 10px;
+          background: var(--login-primary);
           border: none;
-          border-radius: 12px;
+          border-radius: 14px;
           color: white;
-          font-size: 14px;
-          font-weight: 600;
+          font-size: 15px;
+          font-weight: 700;
           font-family: inherit;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           position: relative;
           overflow: hidden;
           letter-spacing: -0.01em;
+          box-shadow: 0 4px 20px -4px rgba(227, 24, 55, 0.4);
         }
         .login-submit::before {
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 50%);
-          pointer-events: none;
+          background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 60%);
+          opacity: 0;
+          transition: opacity 0.3s;
         }
         .login-submit:hover:not(:disabled) {
-          box-shadow:
-            0 0 24px -4px rgba(99, 102, 241, 0.4),
-            0 8px 16px -8px rgba(99, 102, 241, 0.3);
+          transform: translateY(-2px);
+          background: var(--login-primary-dark);
+          box-shadow: 0 8px 30px -4px rgba(227, 24, 55, 0.5);
+        }
+        .login-submit:hover:not(:disabled)::before {
+          opacity: 1;
+        }
+        .login-submit:active:not(:disabled) {
+          transform: translateY(1px);
         }
         .login-submit:disabled {
-          opacity: 0.7;
+          opacity: 0.6;
           cursor: not-allowed;
+          filter: grayscale(0.5);
+        }
+        .login-submit-icon {
+          display: flex;
+          transition: transform 0.3s ease;
+        }
+        .login-submit:hover:not(:disabled) .login-submit-icon {
+          transform: translateX(4px);
         }
 
         /* ─── Spinner ──────────────────────────────────────────────────── */
         .login-spinner {
-          width: 20px;
-          height: 20px;
-          border: 2px solid rgba(255, 255, 255, 0.25);
+          width: 22px;
+          height: 22px;
+          border: 2.5px solid rgba(255, 255, 255, 0.2);
           border-top-color: white;
           border-radius: 50%;
-          animation: spin 0.6s linear infinite;
+          animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.1, 1) infinite;
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -476,7 +521,7 @@ const LoginPage: React.FC = () => {
 
         /* ─── Footer ──────────────────────────────────────────────────── */
         .login-footer {
-          margin-top: 32px;
+          margin-top: 40px;
           text-align: center;
         }
         .login-divider {
@@ -484,38 +529,42 @@ const LoginPage: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          margin-bottom: 16px;
+          margin-bottom: 20px;
         }
         .login-divider::before,
         .login-divider::after {
           content: '';
           flex: 1;
           height: 1px;
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.05);
         }
         .login-divider span {
-          padding: 0 14px;
+          padding: 0 16px;
           font-size: 11px;
-          color: rgba(161, 161, 170, 0.4);
+          color: rgba(161, 161, 170, 0.35);
           white-space: nowrap;
           text-transform: uppercase;
-          letter-spacing: 0.08em;
-          font-weight: 500;
+          letter-spacing: 0.12em;
+          font-weight: 600;
         }
         .login-copyright {
           font-size: 11px;
-          color: rgba(161, 161, 170, 0.25);
+          color: rgba(161, 161, 170, 0.2);
           margin: 0;
+          letter-spacing: 0.02em;
         }
 
         /* ─── Responsive ───────────────────────────────────────────────── */
         @media (max-width: 480px) {
           .login-card {
-            padding: 36px 24px 32px;
-            border-radius: 20px;
+            padding: 44px 28px 36px;
+            border-radius: 24px;
           }
           .login-title {
-            font-size: 22px;
+            font-size: 24px;
+          }
+          .login-submit {
+            padding: 13px 20px;
           }
         }
       `}</style>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Plus, LayoutDashboard, CheckSquare, Users, DollarSign, GraduationCap, Calendar, ChevronRight, FileText, Settings, LogOut, Layers, Zap, Command } from 'lucide-react';
 import { LineOsTab } from './LineOsSidebar';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../context/AuthContext';
 
 const moduleLabels: Record<LineOsTab, { label: string; icon: React.ElementType }> = {
   dashboard:   { label: 'Dashboard',              icon: LayoutDashboard },
@@ -20,12 +21,18 @@ interface Props {
 
 const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
   const { label, icon: ActiveIcon } = moduleLabels[activeTab];
+  const { signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const closeAll = () => {
     setShowNotifications(false);
     setShowUserMenu(false);
+  };
+
+  const handleSignOut = async () => {
+    closeAll();
+    await signOut();
   };
 
   return (
@@ -150,7 +157,7 @@ const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
                     </button>
                   </div>
                   <div style={{ borderTop: '1px solid var(--border-subtle)' }} className="py-1">
-                    <button onClick={closeAll} className="w-full text-left px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/5 flex items-center gap-2 transition-colors">
+                    <button onClick={handleSignOut} className="w-full text-left px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/5 flex items-center gap-2 transition-colors">
                       <LogOut className="w-4 h-4" strokeWidth={1.75} /> Sair
                     </button>
                   </div>
