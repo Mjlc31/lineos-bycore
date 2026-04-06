@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Play, Image as ImageIcon, FileText, CheckCircle2, MessageSquare, Calendar, X, Plus, Upload, Trash2, MessageCircle, Music } from 'lucide-react';
+import { Play, Image as ImageIcon, FileText, CheckCircle2, MessageSquare, Calendar, X, Plus, Upload, Trash2, MessageCircle, Music, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 import useEscapeKey from '../hooks/useEscapeKey';
@@ -14,6 +14,56 @@ const toDisplayDate = (iso: string) => {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
 };
+
+// ─── Componente Lightbox de Mídia ──────────────────────────────────────────────
+const MediaLightbox = ({ content, onClose }: { content: ContentItem; onClose: () => void }) => {
+  useEscapeKey(onClose);
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title={content.title} maxWidth="max-w-4xl">
+      <div className="flex flex-col items-center justify-center p-4 bg-black/40 rounded-xl relative overflow-hidden min-h-[400px]">
+        {/* Renderiza o arquivo baseado no tipo */}
+        {content.fileUrl ? (
+          <>
+            {content.type === 'image' && (
+              <img src={content.fileUrl} alt={content.title} className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
+            )}
+            {content.type === 'video' && (
+              <video src={content.fileUrl} controls autoPlay className="max-w-full max-h-[70vh] rounded-lg shadow-2xl outline-none bg-black" />
+            )}
+            {content.type === 'audio' && (
+              <div className="w-full flex flex-col items-center justify-center py-12 gap-6">
+                <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${content.color} flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)]`}>
+                  <Music className="w-10 h-10 text-white" />
+                </div>
+                <audio src={content.fileUrl} controls autoPlay className="w-full max-w-md outline-none" />
+              </div>
+            )}
+            {content.type === 'pdf' && (
+              <iframe src={content.fileUrl} className="w-full h-[70vh] rounded-lg bg-white" title={content.title} />
+            )}
+            
+            {/* Botão de Download flutuante (opcional, pois já tem o HTML fallback) */}
+            <a 
+              href={content.fileUrl} 
+              download={content.title}
+              className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-red-500/20"
+            >
+              <Download className="w-5 h-5" /> Baixar Arquivo
+            </a>
+          </>
+        ) : (
+          <div className="text-center text-gray-500 py-20 flex flex-col items-center">
+             <FileText className="w-16 h-16 mb-4 opacity-50" />
+             <p className="text-lg font-medium text-gray-400 mb-2">Arquivo não disponível</p>
+             <p className="text-sm">Esta mídia é apenas um placeholder de demonstração.</p>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
 
 // ─── Feedback Modal ───────────────────────────────────────────────────────────
 interface FeedbackModalProps {
@@ -188,6 +238,7 @@ const AprovacaoConteudo = () => {
   const [feedbackTarget, setFeedbackTarget] = useState<number | string | null>(null);
   const [showNovoModal, setShowNovoModal] = useState(false);
   const [whatsappTarget, setWhatsappTarget] = useState<number | string | null>(null);
+  const [viewingContent, setViewingContent] = useState<ContentItem | null>(null);
   const { showToast, ToastContainer } = useToast();
 
   const handleApprove = (id: number | string) => {
@@ -287,7 +338,10 @@ const AprovacaoConteudo = () => {
                 {/* Header Thumb */}
                 <div className={`relative aspect-video sm:h-auto sm:aspect-video ${content.color} flex items-center justify-center overflow-hidden border-b border-[#222]`}>
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
-                    <button className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors border border-white/20 shadow-xl">
+                    <button 
+                      onClick={() => setViewingContent(content)}
+                      className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors border border-white/20 shadow-xl"
+                    >
                       <Play className="w-5 h-5 fill-white" /> Visualizar Arquivo
                     </button>
                   </div>
@@ -445,6 +499,9 @@ const AprovacaoConteudo = () => {
         )}
         {showNovoModal && (
           <NovoConteudoModal onAdd={handleAddContent} onClose={() => setShowNovoModal(false)} />
+        )}
+        {viewingContent !== null && (
+          <MediaLightbox content={viewingContent} onClose={() => setViewingContent(null)} />
         )}
       </AnimatePresence>
       <ToastContainer />

@@ -180,7 +180,6 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                   />
                 </div>
               </div>
-
               {/* Tasks List */}
               <AnimatePresence initial={false}>
                 {!isCollapsed && (
@@ -189,24 +188,28 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex flex-col border-l border-[#2b2b2b] ml-2 pl-4 overflow-hidden"
+                    transition={{ duration: 0.15 }}
+                    className="flex flex-col border-l border-[#2b2b2b] ml-1 pl-3 overflow-hidden"
                   >
                     {statusTasks.map(task => (
                       <div
                         key={task.id}
-                        className="flex items-center py-2 border-b border-[#2b2b2b] hover:bg-[#1e1e1e] group/row -ml-4 pl-4 pr-2 transition-colors relative"
+                        className="flex items-center py-1.5 border-b border-[#2b2b2b] hover:bg-[#1e1e1e] group/row -ml-3 pl-3 pr-2 transition-colors relative"
                       >
-                        <div className="flex-1 flex items-center gap-3">
+                        <div className="flex-1 flex items-center gap-2.5">
+                          {/* Botão Círculo Rápido de Status (como Linear) */}
                           <div
-                            className="w-3.5 h-3.5 rounded-sm border-2 flex-shrink-0 cursor-pointer hover:bg-opacity-20 transition-colors"
+                            className="w-3.5 h-3.5 rounded border flex-shrink-0 cursor-pointer hover:scale-110 transition-transform opacity-70 hover:opacity-100 flex items-center justify-center group/status"
                             style={{ borderColor: status.color }}
                             onClick={() => {
                               const currentIndex = taskStatuses.findIndex(s => s.id === task.statusId);
                               const nextStatus = taskStatuses[(currentIndex + 1) % taskStatuses.length];
                               updateTask(task.id, { statusId: nextStatus.id });
                             }}
-                          />
+                          >
+                             <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/status:opacity-100" style={{ color: status.color }} />
+                          </div>
+
                           {editingTask?.id === task.id && editingTask?.field === 'name' ? (
                             <input
                               type="text"
@@ -217,11 +220,11 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                                 if (e.key === 'Enter') handleUpdateTask(task.id, 'name', e.currentTarget.value);
                                 if (e.key === 'Escape') setEditingTask(null);
                               }}
-                              className="bg-transparent border-b border-primary outline-none text-sm text-white w-full"
+                              className="bg-transparent border-none outline-none text-[13px] text-white w-full h-5 font-medium ml-[-2px] focus:ring-1 focus:ring-primary/50 focus:bg-[#111] px-1 rounded"
                             />
                           ) : (
                             <span
-                              className="text-sm text-gray-200 font-medium cursor-pointer hover:text-primary transition-colors truncate"
+                              className="text-[13px] text-gray-200 font-medium cursor-pointer transition-colors truncate"
                               onClick={() => setEditingTask({ id: task.id, field: 'name' })}
                             >
                               {task.name}
@@ -230,7 +233,7 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                           {task.tags?.map(tag => (
                             <span
                               key={tag.name}
-                              className="px-1.5 py-0.5 text-[10px] font-medium rounded border"
+                              className="px-1.5 py-[1px] text-[9px] font-bold tracking-wide rounded uppercase border"
                               style={{ color: tag.color, backgroundColor: tag.bgColor, borderColor: tag.color + '40' }}
                             >
                               {tag.name}
@@ -238,13 +241,13 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                           ))}
                         </div>
 
-                        <div className="w-32 flex items-center">
+                        <div className="w-28 flex items-center">
                           {task.assignees.map((avatar, i) => (
-                            <img key={i} src={avatar} alt="Assignee" className="w-6 h-6 rounded-full border border-[#141414] cursor-pointer hover:ring-2 hover:ring-primary transition-all" />
+                            <img key={i} src={avatar} alt="Assignee" className="w-5 h-5 rounded-full border border-[#141414] cursor-pointer hover:ring-2 hover:ring-primary transition-all opacity-80 hover:opacity-100" />
                           ))}
                         </div>
 
-                        <div className="w-40 flex items-center text-xs font-medium">
+                        <div className="w-36 flex items-center text-[11px] font-medium">
                           {editingTask?.id === task.id && editingTask?.field === 'dueDate' ? (
                             <input
                               type="text"
@@ -256,7 +259,7 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                                 if (e.key === 'Escape') setEditingTask(null);
                               }}
                               placeholder="Ex: Amanhã, 10/12"
-                              className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1 outline-none text-xs text-white w-24"
+                              className="bg-[#1e1e1e] border border-primary/50 text-primary rounded px-1.5 py-0.5 outline-none text-[11px] w-24 font-bold"
                             />
                           ) : (
                             <div

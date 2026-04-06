@@ -189,19 +189,49 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
 
               {/* Add Card Input */}
               {addingToColumn === status.id && (
-                <div className="bg-[#1e1e1e] border border-primary/40 rounded-lg p-3">
+                <div className="bg-[#1e1e1e] border border-primary/40 rounded-lg p-3 mt-1">
                   <input
                     type="text"
                     autoFocus
                     value={newTaskName}
                     onChange={(e) => setNewTaskName(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddTask(status.id);
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newTaskName.trim()) {
+                          const newTask: Task = {
+                            id: `task-${Date.now()}`,
+                            name: newTaskName,
+                            statusId: status.id,
+                            assignees: ['https://i.pravatar.cc/150?img=11'],
+                            dueDate: '',
+                            priority: 'Normal' as any,
+                          };
+                          setTasks(prev => [...prev, newTask]);
+                          setNewTaskName('');
+                        } else {
+                           setAddingToColumn(null);
+                        }
+                      }
                       if (e.key === 'Escape') { setAddingToColumn(null); setNewTaskName(''); }
                     }}
-                    onBlur={() => handleAddTask(status.id)}
-                    placeholder="Nome da tarefa..."
-                    className="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-600"
+                    onBlur={() => {
+                        if (newTaskName.trim()) {
+                            const newTask: Task = {
+                              id: `task-${Date.now()}`,
+                              name: newTaskName,
+                              statusId: status.id,
+                              assignees: ['https://i.pravatar.cc/150?img=11'],
+                              dueDate: '',
+                              priority: 'Normal' as any,
+                            };
+                            setTasks(prev => [...prev, newTask]);
+                        }
+                        setNewTaskName('');
+                        setAddingToColumn(null);
+                    }}
+                    placeholder="Nome da tarefa... (Enter para adicionar ciclo)"
+                    className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder-gray-600 font-medium"
                   />
                 </div>
               )}
