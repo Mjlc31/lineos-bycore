@@ -60,7 +60,8 @@ export function useContent() {
 
     try {
       const saved = await createContentDB(item);
-      setContentItems(prev => prev.map(i => i.id === tempId ? saved : i));
+      // Preserva o fileUrl original do upload local caso o banco não retorne ainda (blob:)
+      setContentItems(prev => prev.map(i => i.id === tempId ? { ...saved, fileUrl: saved.fileUrl || item.fileUrl } : i));
     } catch (err) {
       console.error('[useContent] addContentItem falhou:', err);
     }

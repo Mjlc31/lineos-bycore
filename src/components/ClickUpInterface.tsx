@@ -133,12 +133,14 @@ const ClickUpInterface = () => {
             <ClientList 
               filteredClients={filteredClients} 
               searchQuery={searchQuery}
+              onOpenAddModal={handleAddItem}
             />
           )}
           {currentView === 'client-board' && (
              <ClientBoardView
                filteredClients={filteredClients}
                searchQuery={searchQuery}
+               onOpenAddModal={handleAddItem}
              />
           )}
           {currentView === 'board' && (

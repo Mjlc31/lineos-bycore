@@ -3,18 +3,21 @@ import { Plus, MoreHorizontal, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 import { Client } from '../types';
+import { ClientDetailModal } from './ClientDetailModal';
 
 interface ClientBoardViewProps {
   filteredClients: Client[];
   searchQuery: string;
+  onOpenAddModal?: () => void;
 }
 
-const ClientBoardView = ({ filteredClients, searchQuery }: ClientBoardViewProps) => {
-  const { setClients, clientStatuses, addClient } = useAppContext();
+const ClientBoardView = ({ filteredClients, searchQuery, onOpenAddModal }: ClientBoardViewProps) => {
+  const { setClients, clientStatuses, addClient, updateClient } = useAppContext();
   const [newClientName, setNewClientName] = useState('');
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const dragItem = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const isFiltering = !!searchQuery;
 
   const handleDragStart = (clientId: string) => {
@@ -114,6 +117,7 @@ const ClientBoardView = ({ filteredClients, searchQuery }: ClientBoardViewProps)
                       exit={{ opacity: 0, scale: 0.95 }}
                       draggable
                       onDragStart={() => handleDragStart(client.id)}
+                      onClick={() => setSelectedClient(client)}
                       className="bg-[#1e1e1e] border border-[#2b2b2b] rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-[#444] transition-all group shadow-sm hover:shadow-md"
                     >
                       <div className="w-full h-0.5 rounded-full mb-2" style={{ backgroundColor: status.color }} />
@@ -193,6 +197,17 @@ const ClientBoardView = ({ filteredClients, searchQuery }: ClientBoardViewProps)
           </div>
         );
       })}
+
+      <ClientDetailModal
+        isOpen={!!selectedClient}
+        onClose={() => setSelectedClient(null)}
+        client={selectedClient}
+        onUpdate={(id, updates) => {
+          updateClient(id, updates);
+          // Atualiza também o selectedClient local se ele estiver aberto
+          setSelectedClient(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
+        }}
+      />
     </div>
   );
 };

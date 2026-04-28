@@ -16,7 +16,7 @@ import { useAuth } from './context/AuthContext';
 import ApprovalClientView from './components/ApprovalClientView';
 
 function App() {
-  const { session, isAuthLoading } = useAuth();
+  const { session, profile, isAuthLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<LineOsTab>('dashboard');
   const [showPalette, setShowPalette] = useState(false);
 
@@ -58,10 +58,7 @@ function App() {
     }
   };
 
-  // Check public routes before Auth
-  if (window.location.pathname.startsWith('/cliente/aprovacao')) {
-    return <ApprovalClientView />;
-  }
+  // Remove bypass público - o cliente precisa estar logado para ver seu conteúdo
 
   // Auth loading state
   if (isAuthLoading) {
@@ -112,6 +109,16 @@ function App() {
   }
 
   // Authenticated → show app
+  if (profile?.role === 'CLIENTE') {
+    return (
+      <div className="flex h-screen overflow-hidden font-sans" style={{ background: 'var(--surface-0)', color: 'var(--text-secondary)' }}>
+        <main className="flex-1 overflow-hidden relative">
+           <ApprovalClientView />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden font-sans" style={{ background: 'var(--surface-0)', color: 'var(--text-secondary)' }}>
       <LineOsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />

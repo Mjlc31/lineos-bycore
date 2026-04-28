@@ -187,6 +187,10 @@ export type ContentItem = {
   linkedTaskId?: string; // integração com tarefas
   caption?: string;      // legenda do post
   postDate?: string;     // data de postagem
+  postTime?: string;     // horário de postagem
+  postChannels?: string[]; // canais de postagem
+  postFormat?: string;   // formato de postagem
+  clientEmail?: string;  // email do cliente para acesso
 };
 
 export type ContentGroup = {

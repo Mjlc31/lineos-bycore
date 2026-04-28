@@ -46,6 +46,10 @@ interface AppContextType {
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   contentItems: ContentItem[];
   setContentItems: React.Dispatch<React.SetStateAction<ContentItem[]>>;
+  addContentItem: (item: Omit<ContentItem, 'id'>) => void;
+  updateContentItem: (id: number, updates: Partial<Omit<ContentItem, 'id'>>) => void;
+  updateContentStatus: (id: number, status: ContentStatus, feedback?: string | null) => void;
+  deleteContentItem: (id: number) => void;
   meetings: Meeting[];
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>;
   watchedVideos: string[];
@@ -96,7 +100,6 @@ interface AppContextType {
 
   // Others
   addMeeting: (meeting: Omit<Meeting, 'id'>) => void;
-  addContentItem: (item: Omit<ContentItem, 'id'>) => void;
   toggleVideoWatched: (videoId: string) => void;
 }
 
@@ -165,6 +168,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Content
       contentItems: contentHook.contentItems,
       setContentItems: contentHook.setContentItems,
+      addContentItem: contentHook.addContentItem,
+      updateContentItem: contentHook.updateContentItem,
+      updateContentStatus: contentHook.updateContentStatus,
+      deleteContentItem: contentHook.deleteContentItem,
 
       // Transactions
       transactions: transactionsHook.transactions,
@@ -214,7 +221,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Others
       addMeeting: meetingsHook.addMeeting,
-      addContentItem: contentHook.addContentItem,
       toggleVideoWatched,
     }}>
       {children}

@@ -8,9 +8,10 @@ import { Client } from '../types';
 interface ClientListProps {
   filteredClients?: Client[];
   searchQuery?: string;
+  onOpenAddModal?: () => void;
 }
 
-const ClientList = ({ filteredClients: externalFilteredClients, searchQuery }: ClientListProps) => {
+const ClientList = ({ filteredClients: externalFilteredClients, searchQuery, onOpenAddModal }: ClientListProps) => {
   const { clients, setClients, clientStatuses, addClient, deleteClient, updateClient } = useAppContext();
   const { showToast, ToastContainer } = useToast();
   
@@ -126,7 +127,7 @@ const ClientList = ({ filteredClients: externalFilteredClients, searchQuery }: C
         <div className="flex-1">Repositório de Docum...</div>
         <div className="flex-1">Última Reunião de Suc...</div>
         <div className="flex-1">Status</div>
-        <div className="w-10 flex justify-center"><Plus className="w-4 h-4 cursor-pointer hover:text-gray-300" /></div>
+        <div className="w-10 flex justify-center"><Plus className="w-4 h-4 cursor-pointer hover:text-gray-300" onClick={onOpenAddModal} /></div>
       </div>
 
       <div className="space-y-6">

@@ -16,6 +16,13 @@ function mapRowToContent(row: Record<string, unknown>): ContentItem {
     color: row.color as string,
     textColor: row.text_color as string,
     linkedTaskId: row.linked_task_id as string | undefined,
+    postDate: row.post_date as string | undefined,
+    postTime: row.post_time as string | undefined,
+    postChannels: row.post_channels as string[] | undefined,
+    postFormat: row.post_format as string | undefined,
+    caption: row.caption as string | undefined,
+    clientEmail: row.client_email as string | undefined,
+    fileUrl: row.file_url as string | undefined,
   };
 }
 
@@ -47,6 +54,13 @@ export async function createContentItem(
       color: item.color,
       text_color: item.textColor,
       linked_task_id: item.linkedTaskId,
+      post_date: item.postDate,
+      post_time: item.postTime,
+      post_channels: item.postChannels,
+      post_format: item.postFormat,
+      caption: item.caption,
+      client_email: item.clientEmail,
+      file_url: item.fileUrl,
     })
     .select()
     .single();
@@ -84,6 +98,13 @@ export async function updateContentItem(
   if (patch.color !== undefined)      dbPatch.color = patch.color;
   if (patch.textColor !== undefined)  dbPatch.text_color = patch.textColor;
   if (patch.linkedTaskId !== undefined) dbPatch.linked_task_id = patch.linkedTaskId;
+  if (patch.postDate !== undefined) dbPatch.post_date = patch.postDate;
+  if (patch.postTime !== undefined) dbPatch.post_time = patch.postTime;
+  if (patch.postChannels !== undefined) dbPatch.post_channels = patch.postChannels;
+  if (patch.postFormat !== undefined) dbPatch.post_format = patch.postFormat;
+  if (patch.caption !== undefined) dbPatch.caption = patch.caption;
+  if (patch.clientEmail !== undefined) dbPatch.client_email = patch.clientEmail;
+  if (patch.fileUrl !== undefined) dbPatch.file_url = patch.fileUrl;
 
   const { error } = await supabase.from('content_items').update(dbPatch).eq('id', id);
   if (error) throw new Error(`[contentService] updateContentItem: ${error.message}`);

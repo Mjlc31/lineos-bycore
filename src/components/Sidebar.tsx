@@ -110,20 +110,26 @@ const Sidebar = ({ currentView, onViewChange }: SidebarProps) => {
                       <span className="text-sm font-medium">Clientes Line</span>
                     </div>
                   )}
-                  {(!searchQuery || items.some(i => i.key === 'tasks')) && (
-                    <div
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                        currentView === 'tasks' || currentView === 'board' || currentView === 'calendar'
-                          ? 'bg-[#2b2b2b] text-gray-200'
-                          : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                      }`}
-                      onClick={() => onViewChange('tasks')}
-                    >
-                      <List className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium">Pão de Queijo Ki...</span>
-                      <span className="ml-auto text-[10px] text-gray-500 font-medium">{taskCount}</span>
-                    </div>
-                  )}
+                  {/* Lista dinâmica de clientes cadastrados caindo no Spaces */}
+                  {clients.map(client => {
+                    const matchesSearch = !searchQuery || client.name.toLowerCase().includes(searchQuery.toLowerCase());
+                    if (!matchesSearch) return null;
+                    return (
+                      <div
+                        key={client.id}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+                          currentView === 'tasks' || currentView === 'board' || currentView === 'calendar'
+                            ? 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+                            : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+                        }`}
+                        onClick={() => onViewChange('tasks')}
+                      >
+                        <List className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium truncate w-32" title={client.name}>{client.name}</span>
+                        <span className="ml-auto text-[10px] text-gray-500 font-medium">{taskCount}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

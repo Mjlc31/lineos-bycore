@@ -121,6 +121,12 @@ export interface Database {
           color: string;
           text_color: string;
           linked_task_id: string | null;
+          post_date: string | null;
+          post_time: string | null;
+          post_channels: string[] | null;
+          post_format: string | null;
+          caption: string | null;
+          client_email: string | null;
           sort_order: number;
           created_at: string;
           updated_at: string;

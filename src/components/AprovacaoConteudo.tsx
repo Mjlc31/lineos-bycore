@@ -6,6 +6,8 @@ import useEscapeKey from '../hooks/useEscapeKey';
 import { useToast } from './Toast';
 import { ContentType, ContentStatus, ContentItem } from '../types';
 import { Modal } from './ui/Modal';
+import { ContentDetailModal } from './ContentDetailModal';
+import { ContentCalendarView } from './ContentCalendarView';
 
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 const toDisplayDate = (iso: string) => {
@@ -15,54 +17,7 @@ const toDisplayDate = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
-// ─── Componente Lightbox de Mídia ──────────────────────────────────────────────
-const MediaLightbox = ({ content, onClose }: { content: ContentItem; onClose: () => void }) => {
-  useEscapeKey(onClose);
-
-  return (
-    <Modal isOpen={true} onClose={onClose} title={content.title} maxWidth="max-w-4xl">
-      <div className="flex flex-col items-center justify-center p-4 bg-black/40 rounded-xl relative overflow-hidden min-h-[400px]">
-        {/* Renderiza o arquivo baseado no tipo */}
-        {content.fileUrl ? (
-          <>
-            {content.type === 'image' && (
-              <img src={content.fileUrl} alt={content.title} className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
-            )}
-            {content.type === 'video' && (
-              <video src={content.fileUrl} controls autoPlay className="max-w-full max-h-[70vh] rounded-lg shadow-2xl outline-none bg-black" />
-            )}
-            {content.type === 'audio' && (
-              <div className="w-full flex flex-col items-center justify-center py-12 gap-6">
-                <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${content.color} flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)]`}>
-                  <Music className="w-10 h-10 text-white" />
-                </div>
-                <audio src={content.fileUrl} controls autoPlay className="w-full max-w-md outline-none" />
-              </div>
-            )}
-            {content.type === 'pdf' && (
-              <iframe src={content.fileUrl} className="w-full h-[70vh] rounded-lg bg-white" title={content.title} />
-            )}
-            
-            {/* Botão de Download flutuante (opcional, pois já tem o HTML fallback) */}
-            <a 
-              href={content.fileUrl} 
-              download={content.title}
-              className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-red-500/20"
-            >
-              <Download className="w-5 h-5" /> Baixar Arquivo
-            </a>
-          </>
-        ) : (
-          <div className="text-center text-gray-500 py-20 flex flex-col items-center">
-             <FileText className="w-16 h-16 mb-4 opacity-50" />
-             <p className="text-lg font-medium text-gray-400 mb-2">Arquivo não disponível</p>
-             <p className="text-sm">Esta mídia é apenas um placeholder de demonstração.</p>
-          </div>
-        )}
-      </div>
-    </Modal>
-  );
-};
+// MediaLightbox replaced by ContentDetailModal
 
 
 // ─── Feedback Modal ───────────────────────────────────────────────────────────
@@ -147,7 +102,15 @@ const colorMap: Record<ContentType, { color: string; textColor: string; thumbnai
 };
 
 const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem, 'id'>) => void; onClose: () => void }) => {
-  const [form, setForm] = useState({ title: '', date: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState({ 
+    title: '', 
+    date: new Date().toISOString().split('T')[0],
+    postTime: '',
+    postChannels: [] as string[],
+    postFormat: '',
+    caption: '',
+    clientEmail: ''
+  });
   const [file, setFile] = useState<File | null>(null);
   useEscapeKey(onClose);
 
@@ -175,7 +138,13 @@ const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem,
       title: form.title || file.name,
       type: determinedType,
       status: 'PENDENTE',
-      date: form.date,
+      date: form.date, // Mantém compatibilidade
+      postDate: form.date, // Data de postagem = data inserida
+      postTime: form.postTime,
+      postChannels: form.postChannels,
+      postFormat: form.postFormat,
+      caption: form.caption,
+      clientEmail: form.clientEmail,
       feedback: null,
       fileUrl,
       ...meta,
@@ -208,7 +177,7 @@ const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem,
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Data de Entrega</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Data de Postagem</label>
               <input
                 type="date"
                 required
@@ -217,6 +186,68 @@ const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem,
                 className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all [color-scheme:dark]"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Horário de Postagem</label>
+              <input
+                type="time"
+                value={form.postTime}
+                onChange={e => setForm({ ...form, postTime: e.target.value })}
+                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Formato</label>
+              <select
+                value={form.postFormat}
+                onChange={e => setForm({ ...form, postFormat: e.target.value })}
+                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all"
+              >
+                <option value="">Selecione...</option>
+                <option value="Feed">Feed</option>
+                <option value="Reels">Reels / Shorts / TikTok</option>
+                <option value="Stories">Stories</option>
+                <option value="Carrossel">Carrossel</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Canais</label>
+            <div className="flex flex-wrap gap-2">
+              {['Instagram', 'TikTok', 'YouTube', 'Kwai', 'LinkedIn', 'Facebook'].map(ch => (
+                <label key={ch} className="flex items-center gap-2 bg-[#111] border border-white/10 px-3 py-1.5 rounded-lg text-sm text-gray-300 cursor-pointer hover:border-white/30 transition-all">
+                  <input 
+                    type="checkbox"
+                    checked={form.postChannels.includes(ch)}
+                    onChange={(e) => {
+                      if (e.target.checked) setForm({ ...form, postChannels: [...form.postChannels, ch] });
+                      else setForm({ ...form, postChannels: form.postChannels.filter(c => c !== ch) });
+                    }}
+                    className="accent-blue-500"
+                  />
+                  {ch}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Email do Cliente (Para Acesso)</label>
+             <input
+                type="email"
+                value={form.clientEmail}
+                onChange={e => setForm({ ...form, clientEmail: e.target.value })}
+                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all placeholder-gray-600"
+                placeholder="cliente@email.com"
+              />
+          </div>
+          <div>
+             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Legenda do Post</label>
+             <textarea
+                value={form.caption}
+                onChange={e => setForm({ ...form, caption: e.target.value })}
+                rows={3}
+                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all resize-none placeholder-gray-600 custom-scrollbar"
+                placeholder="Escreva a legenda que acompanhará a postagem..."
+              />
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-white/5">
             <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors">
@@ -233,16 +264,17 @@ const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem,
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AprovacaoConteudo = () => {
-  const { contentItems: contents, setContentItems: setContents, addContentItem } = useAppContext();
+  const { contentItems: contents, addContentItem, updateContentStatus, deleteContentItem } = useAppContext();
   const [filter, setFilter] = useState<'TODOS' | ContentStatus>('TODOS');
   const [feedbackTarget, setFeedbackTarget] = useState<number | string | null>(null);
   const [showNovoModal, setShowNovoModal] = useState(false);
   const [whatsappTarget, setWhatsappTarget] = useState<number | string | null>(null);
   const [viewingContent, setViewingContent] = useState<ContentItem | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const { showToast, ToastContainer } = useToast();
 
   const handleApprove = (id: number | string) => {
-    setContents(prev => prev.map(c => c.id === id ? { ...c, status: 'APROVADO' as ContentStatus, feedback: null } : c));
+    updateContentStatus(Number(id), 'APROVADO', null);
   };
 
   const handleRequestChange = (id: number | string) => {
@@ -251,13 +283,13 @@ const AprovacaoConteudo = () => {
 
   const handleFeedbackConfirm = (text: string) => {
     if (feedbackTarget === null) return;
-    setContents(prev => prev.map(c => c.id === feedbackTarget ? { ...c, status: 'REVISÃO' as ContentStatus, feedback: text } : c));
+    updateContentStatus(Number(feedbackTarget), 'REVISÃO', text);
     setFeedbackTarget(null);
   };
 
   const handleNotifyConfirm = () => {
     if (whatsappTarget === null) return;
-    showToast("Mensagem enviada com sucesso via WhatsApp!");
+    showToast("Mensagem enviada com sucesso via WhatsApp!", 'success');
     setWhatsappTarget(null);
   };
 
@@ -267,17 +299,9 @@ const AprovacaoConteudo = () => {
   };
 
   const handleDelete = useCallback((id: number | string) => {
-    const deleted = contents.find((c) => c.id === id);
-    if (!deleted) return;
-    setContents((prev) => prev.filter((c) => c.id !== id));
-    showToast(`"${deleted.title}" removido.`, () => {
-      setContents((prev) => {
-        const exists = prev.find((c) => c.id === id);
-        if (exists) return prev;
-        return [deleted, ...prev];
-      });
-    });
-  }, [contents, setContents, showToast]);
+    deleteContentItem(Number(id));
+    showToast(`Mídia removida com sucesso.`, 'success');
+  }, [deleteContentItem, showToast]);
 
 
   const filteredContents = contents.filter(c => filter === 'TODOS' || c.status === filter);
@@ -323,6 +347,20 @@ const AprovacaoConteudo = () => {
             >
               <LinkIcon className="w-4 h-4" /> Link do Cliente
             </button>
+            <div className="flex bg-[#141414] p-1 rounded-xl border border-white/5 mx-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#2a2a2a] text-white shadow-md border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+              >
+                Grade
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 ${viewMode === 'calendar' ? 'bg-[#2a2a2a] text-white shadow-md border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+              >
+                <Calendar className="w-3.5 h-3.5" /> 360º
+              </button>
+            </div>
             <button
               onClick={() => setShowNovoModal(true)}
               className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
@@ -332,163 +370,177 @@ const AprovacaoConteudo = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-          <AnimatePresence mode='popLayout'>
-            {filteredContents.map((content) => (
-              <motion.div
-                key={content.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="bg-[#141414] border border-[#222] rounded-2xl overflow-hidden flex flex-col group hover:border-[#444] transition-all hover:shadow-2xl hover:shadow-black/50 relative"
-              >
-                {/* Header Thumb */}
-                <div className={`relative aspect-video sm:h-auto sm:aspect-video ${content.color} flex items-center justify-center overflow-hidden border-b border-[#222]`}>
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
-                    <button 
-                      onClick={() => setViewingContent(content)}
-                      className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors border border-white/20 shadow-xl"
-                    >
-                      <Play className="w-5 h-5 fill-white" /> Visualizar Arquivo
-                    </button>
-                  </div>
-
-                  {/* Top badges */}
-                  <div className="absolute top-3 left-3 flex gap-2 z-20">
-                    <div className="bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 text-white border border-white/10">
-                      {content.type === 'video' && <Play className="w-3 h-3" />}
-                      {content.type === 'image' && <ImageIcon className="w-3 h-3" />}
-                      {content.type === 'pdf' && <FileText className="w-3 h-3" />}
-                      {content.type}
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+            <AnimatePresence mode='popLayout'>
+              {filteredContents.map((content) => (
+                <motion.div
+                  key={content.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-[#141414] border border-[#222] rounded-2xl overflow-hidden flex flex-col group hover:border-[#444] transition-all hover:shadow-2xl hover:shadow-black/50 relative"
+                >
+                  {/* Header Thumb */}
+                  <div className={`relative aspect-video sm:h-auto sm:aspect-video ${content.color} flex items-center justify-center overflow-hidden border-b border-[#222]`}>
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
+                      <button 
+                        onClick={() => setViewingContent(content)}
+                        className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors border border-white/20 shadow-xl"
+                      >
+                        <Play className="w-5 h-5 fill-white" /> Detalhes do Arquivo
+                      </button>
                     </div>
-                  </div>
 
-                  <div className="absolute top-3 right-3 flex gap-2 z-20">
-                    <div className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 border ${
-                      content.status === 'PENDENTE' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                      content.status === 'REVISÃO'  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                      'bg-green-500/20 text-green-400 border-green-500/30'
-                    }`}>
-                      {content.status}
+                    {/* Top badges */}
+                    <div className="absolute top-3 left-3 flex gap-2 z-20">
+                      <div className="bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 text-white border border-white/10">
+                        {content.type === 'video' && <Play className="w-3 h-3" />}
+                        {content.type === 'image' && <ImageIcon className="w-3 h-3" />}
+                        {content.type === 'pdf' && <FileText className="w-3 h-3" />}
+                        {content.type}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Thumbnail Previews */}
-                  {content.fileUrl ? (
-                    content.type === 'image' ? (
-                      <img src={content.fileUrl} className="w-full h-full object-cover opacity-80 mix-blend-screen" />
-                    ) : content.type === 'video' ? (
-                      <video src={content.fileUrl} className="w-full h-full object-cover opacity-80 mix-blend-screen" autoPlay muted loop />
-                    ) : content.type === 'audio' ? (
-                       <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 backdrop-blur-md relative z-10">
-                         <Music className={`w-8 h-8 ${content.textColor} mb-3`} />
-                         <audio src={content.fileUrl} controls className="w-[85%] max-w-[200px] h-8 opacity-90 transition-opacity z-20 outline-none" />
-                       </div>
-                    ) : (
-                      <div className="w-24 h-32 bg-white/90 shadow-2xl rounded-md flex flex-col p-3 border border-gray-300 transform -rotate-2 relative z-10">
-                        <div className="w-1/2 h-2.5 bg-red-500 rounded-sm mb-4"></div>
-                        <div className="space-y-2">
-                          <div className="w-full h-1.5 bg-gray-300 rounded"></div>
-                          <div className="w-full h-1.5 bg-gray-300 rounded"></div>
-                          <div className="w-3/4 h-1.5 bg-gray-300 rounded"></div>
-                        </div>
-                     </div>
-                    )
-                  ) : (
-                    <>
-                      {content.thumbnail === 'N' && <span className={`text-7xl font-bold ${content.textColor} drop-shadow-2xl`}>N</span>}
-                      {content.thumbnail === 'audio' && <Music className={`w-16 h-16 ${content.textColor} drop-shadow-lg opacity-80`} />}
-                      {content.thumbnail === 'img' && (
-                        <div className={`w-20 h-20 border-[6px] border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm ${content.textColor}`}>
-                          <ImageIcon className="w-8 h-8 opacity-80" />
-                        </div>
-                      )}
-                      {content.thumbnail === 'pdf' && (
-                        <div className="w-24 h-32 bg-white/90 shadow-2xl rounded-md flex flex-col p-3 border border-gray-300 transform -rotate-2">
+                    <div className="absolute top-3 right-3 flex gap-2 z-20">
+                      <div className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 border ${
+                        content.status === 'PENDENTE' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                        content.status === 'REVISÃO'  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                        'bg-green-500/20 text-green-400 border-green-500/30'
+                      }`}>
+                        {content.status}
+                      </div>
+                    </div>
+
+                    {/* Thumbnail Previews */}
+                    {content.fileUrl ? (
+                      content.type === 'image' ? (
+                        <img src={content.fileUrl} className="w-full h-full object-cover opacity-80 mix-blend-screen" />
+                      ) : content.type === 'video' ? (
+                        <video src={content.fileUrl} className="w-full h-full object-cover opacity-80 mix-blend-screen" autoPlay muted loop />
+                      ) : content.type === 'audio' ? (
+                         <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 backdrop-blur-md relative z-10">
+                           <Music className={`w-8 h-8 ${content.textColor} mb-3`} />
+                           <audio src={content.fileUrl} controls className="w-[85%] max-w-[200px] h-8 opacity-90 transition-opacity z-20 outline-none" />
+                         </div>
+                      ) : (
+                        <div className="w-24 h-32 bg-white/90 shadow-2xl rounded-md flex flex-col p-3 border border-gray-300 transform -rotate-2 relative z-10">
                           <div className="w-1/2 h-2.5 bg-red-500 rounded-sm mb-4"></div>
                           <div className="space-y-2">
                             <div className="w-full h-1.5 bg-gray-300 rounded"></div>
                             <div className="w-full h-1.5 bg-gray-300 rounded"></div>
                             <div className="w-3/4 h-1.5 bg-gray-300 rounded"></div>
                           </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Content Body */}
-                <div className="p-5 flex-1 flex flex-col relative bg-gradient-to-b from-[#141414] to-[#0a0a0a]">
-                  {/* Delete Button (visible on hover) */}
-                  <button
-                    onClick={() => handleDelete(content.id)}
-                    className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400 bg-red-400/10 hover:bg-red-400/20 p-2 rounded-lg"
-                    title="Excluir Mídia"
-                  >
-                     <Trash2 className="w-4 h-4" />
-                  </button>
-
-                  <h3 className="font-semibold text-[15px] mb-2 text-white pr-6 leading-snug">{content.title}</h3>
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-5 font-medium">
-                    <Calendar className="w-3.5 h-3.5" /> Entregue em {toDisplayDate(content.date)}
-                  </p>
-
-                  {content.feedback && (
-                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3.5 mb-5">
-                      <p className="text-[11px] font-bold text-yellow-500 mb-1.5 flex items-center gap-1.5 uppercase tracking-wide">
-                        <MessageSquare className="w-3.5 h-3.5" /> Feedback Solicitado
-                      </p>
-                      <p className="text-sm text-gray-300 italic leading-relaxed">"{content.feedback}"</p>
-                    </div>
-                  )}
-
-                  <div className="mt-auto pt-4 flex flex-col gap-3">
-                    {content.status === 'APROVADO' ? (
-                      <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" /> Aprovado pelo Cliente
-                      </button>
+                       </div>
+                      )
                     ) : (
                       <>
-                        <button
-                          onClick={() => setWhatsappTarget(content.id)}
-                          className="w-full py-2.5 rounded-xl text-sm font-bold text-black bg-emerald-500 border border-emerald-500 hover:bg-emerald-400 hover:border-emerald-400 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]"
-                        >
-                          <MessageCircle className="w-4 h-4 fill-black text-black" /> Notificar Cliente
-                        </button>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            onClick={() => handleApprove(content.id)}
-                            className="py-2.5 rounded-xl text-sm font-medium text-green-400 border border-green-500/20 hover:bg-green-500/10 flex items-center justify-center gap-2 transition-colors hover:border-green-500/40"
-                          >
-                            <CheckCircle2 className="w-4 h-4" /> Aprovar
-                          </button>
-                          <button
-                            onClick={() => handleRequestChange(content.id)}
-                            className="py-2.5 rounded-xl text-sm font-medium text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 flex items-center justify-center gap-2 transition-colors hover:border-yellow-500/40"
-                          >
-                            <MessageSquare className="w-4 h-4" /> Alteração
-                          </button>
-                        </div>
+                        {content.thumbnail === 'N' && <span className={`text-7xl font-bold ${content.textColor} drop-shadow-2xl`}>N</span>}
+                        {content.thumbnail === 'audio' && <Music className={`w-16 h-16 ${content.textColor} drop-shadow-lg opacity-80`} />}
+                        {content.thumbnail === 'img' && (
+                          <div className={`w-20 h-20 border-[6px] border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm ${content.textColor}`}>
+                            <ImageIcon className="w-8 h-8 opacity-80" />
+                          </div>
+                        )}
+                        {content.thumbnail === 'pdf' && (
+                          <div className="w-24 h-32 bg-white/90 shadow-2xl rounded-md flex flex-col p-3 border border-gray-300 transform -rotate-2">
+                            <div className="w-1/2 h-2.5 bg-red-500 rounded-sm mb-4"></div>
+                            <div className="space-y-2">
+                              <div className="w-full h-1.5 bg-gray-300 rounded"></div>
+                              <div className="w-full h-1.5 bg-gray-300 rounded"></div>
+                              <div className="w-3/4 h-1.5 bg-gray-300 rounded"></div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
 
-          {filteredContents.length === 0 && (
-            <motion.div initial={{opacity:0}} animate={{opacity:1}} className="col-span-full py-24 text-center text-gray-500 flex flex-col items-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#141414] border border-[#222] flex items-center justify-center mb-4">
-                 <ImageIcon className="w-8 h-8 text-gray-600" />
-              </div>
-              <h3 className="font-semibold text-gray-400 mb-1">Nenhum conteúdo encontrado</h3>
-              <p className="text-sm">Não há itens para o filtro selecionado.</p>
-            </motion.div>
-          )}
-        </div>
+                  {/* Content Body */}
+                  <div className="p-5 flex-1 flex flex-col relative bg-gradient-to-b from-[#141414] to-[#0a0a0a]">
+                    {/* Delete Button (visible on hover) */}
+                    <button
+                      onClick={() => handleDelete(content.id)}
+                      className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400 bg-red-400/10 hover:bg-red-400/20 p-2 rounded-lg"
+                      title="Excluir Mídia"
+                    >
+                       <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    <h3 className="font-semibold text-[15px] mb-2 text-white pr-6 leading-snug">{content.title}</h3>
+                    <div className="flex items-center gap-3 mb-5">
+                      <button onClick={() => setViewMode('calendar')} className="text-xs text-gray-400 hover:text-emerald-400 flex items-center gap-1.5 font-medium transition-colors bg-[#222] hover:bg-[#333] px-2 py-1 rounded">
+                        <Calendar className="w-3.5 h-3.5" /> Post: {toDisplayDate(content.postDate)}
+                      </button>
+                      {content.postChannels && content.postChannels.length > 0 && (
+                        <div className="flex gap-1">
+                          {content.postChannels.slice(0, 2).map(ch => (
+                            <span key={ch} className="text-[10px] bg-white/10 text-gray-300 px-1.5 py-0.5 rounded font-bold uppercase">{ch}</span>
+                          ))}
+                          {content.postChannels.length > 2 && <span className="text-[10px] bg-white/10 text-gray-300 px-1.5 py-0.5 rounded font-bold">+{content.postChannels.length - 2}</span>}
+                        </div>
+                      )}
+                    </div>
+
+                    {content.feedback && (
+                      <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3.5 mb-5">
+                        <p className="text-[11px] font-bold text-yellow-500 mb-1.5 flex items-center gap-1.5 uppercase tracking-wide">
+                          <MessageSquare className="w-3.5 h-3.5" /> Feedback Solicitado
+                        </p>
+                        <p className="text-sm text-gray-300 italic leading-relaxed">"{content.feedback}"</p>
+                      </div>
+                    )}
+
+                    <div className="mt-auto pt-4 flex flex-col gap-3">
+                      {content.status === 'APROVADO' ? (
+                        <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-2">
+                          <CheckCircle2 className="w-4 h-4" /> Aprovado pelo Cliente
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setWhatsappTarget(content.id)}
+                            className="w-full py-2.5 rounded-xl text-sm font-bold text-black bg-emerald-500 border border-emerald-500 hover:bg-emerald-400 hover:border-emerald-400 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]"
+                          >
+                            <MessageCircle className="w-4 h-4 fill-black text-black" /> Notificar Cliente
+                          </button>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => handleApprove(content.id)}
+                              className="py-2.5 rounded-xl text-sm font-medium text-green-400 border border-green-500/20 hover:bg-green-500/10 flex items-center justify-center gap-2 transition-colors hover:border-green-500/40"
+                            >
+                              <CheckCircle2 className="w-4 h-4" /> Aprovar
+                            </button>
+                            <button
+                              onClick={() => handleRequestChange(content.id)}
+                              className="py-2.5 rounded-xl text-sm font-medium text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 flex items-center justify-center gap-2 transition-colors hover:border-yellow-500/40"
+                            >
+                              <MessageSquare className="w-4 h-4" /> Alteração
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {filteredContents.length === 0 && (
+              <motion.div initial={{opacity:0}} animate={{opacity:1}} className="col-span-full py-24 text-center text-gray-500 flex flex-col items-center">
+                <div className="w-16 h-16 rounded-2xl bg-[#141414] border border-[#222] flex items-center justify-center mb-4">
+                   <ImageIcon className="w-8 h-8 text-gray-600" />
+                </div>
+                <h3 className="font-semibold text-gray-400 mb-1">Nenhum conteúdo encontrado</h3>
+                <p className="text-sm">Não há itens para o filtro selecionado.</p>
+              </motion.div>
+            )}
+          </div>
+        ) : (
+          <ContentCalendarView onContentClick={(c) => setViewingContent(c)} />
+        )}
       </div>
 
       <AnimatePresence>
@@ -510,7 +562,12 @@ const AprovacaoConteudo = () => {
           <NovoConteudoModal onAdd={handleAddContent} onClose={() => setShowNovoModal(false)} />
         )}
         {viewingContent !== null && (
-          <MediaLightbox content={viewingContent} onClose={() => setViewingContent(null)} />
+          <ContentDetailModal 
+            content={viewingContent} 
+            onClose={() => setViewingContent(null)}
+            onApprove={handleApprove}
+            onRequestChange={handleRequestChange}
+          />
         )}
       </AnimatePresence>
       <ToastContainer />
