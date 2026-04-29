@@ -17,7 +17,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   Task, Lead, Transaction, ContentItem, Meeting, Client, Status, ClientStatus,
-  TaskComment, TaskAttachment, Automation, CrmColumn, LeadActivity, LeadTask,
+  TaskComment, TaskAttachment, Automation, CrmColumn, LeadActivity, LeadTask, ContentStatus,
 } from '../types';
 import { useTasks } from '../hooks/useTasks';
 import { useLeads } from '../hooks/useLeads';
