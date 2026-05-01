@@ -84,7 +84,7 @@ export type Client = {
   ultimaReuniao?: string;
 };
 
-export type ViewType = 'overview' | 'tasks' | 'clients' | 'board' | 'calendar' | 'client-board' | 'client-database' | 'task-dashboard';
+export type ViewType = 'overview' | 'tasks' | 'clients' | 'board' | 'calendar' | 'client-board' | 'client-database' | 'task-dashboard' | 'dna-clientes';
 
 // ─── CRM Types ────────────────────────────────────────────────────────────────
 export type Column = {
@@ -136,6 +136,9 @@ export type Lead = {
 
   // Tarefas vinculadas
   tasks?: LeadTask[];
+
+  // Controle de Arquivamento (Para leads que viraram receita/fecharam)
+  archived?: boolean;
 };
 
 // ─── CRM Column (editável) ────────────────────────────────────────────────────
@@ -173,6 +176,13 @@ export type DRECategory = {
 export type ContentStatus = 'PENDENTE' | 'REVISÃO' | 'ALTERAÇÃO' | 'APROVADO';
 export type ContentType = 'video' | 'image' | 'pdf' | 'audio';
 
+export type ContentFeedback = {
+  id: string;
+  text: string;
+  date: string; // ISO string
+  author: 'cliente' | 'equipe';
+};
+
 export type ContentItem = {
   id: number;
   title: string;
@@ -180,6 +190,7 @@ export type ContentItem = {
   status: ContentStatus;
   date: string;
   feedback: string | null;
+  feedbacks?: ContentFeedback[]; // novo histórico
   thumbnail: string;
   color: string;
   textColor: string;

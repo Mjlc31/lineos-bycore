@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   Plus, TrendingUp, DollarSign, MoreHorizontal, Building2,
-  Calendar, DollarSign as DollarIcon, X, Trash2, Clock, MessageCircle
+  Calendar, DollarSign as DollarIcon, X, Trash2, Clock, MessageCircle, Settings2, ChevronDown
 } from 'lucide-react';
 import {
   DndContext, closestCorners, KeyboardSensor, PointerSensor,
@@ -18,6 +18,10 @@ import { useToast } from './Toast';
 import { useAppContext } from '../context/AppContext';
 import { Modal } from './ui/Modal';
 import { LeadModal } from './LeadModal';
+import { usePipelines } from '../hooks/usePipelines';
+import PipelineManager from './PipelineManager';
+
+import type { Lead } from '../types';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Column {
@@ -27,24 +31,16 @@ interface Column {
   accent: string;
 }
 
-import type { Lead } from '../types';
-
-const initialColumns: Column[] = [
-  { id: 'leads',    title: 'Leads',             color: 'bg-blue-500',   accent: 'blue'   },
-  { id: 'agendada', title: 'Reunião Agendada',   color: 'bg-primary', accent: 'purple' },
-  { id: 'proposta', title: 'Proposta Enviada',   color: 'bg-orange-500', accent: 'orange' },
-  { id: 'ganho',    title: 'Fechado (Ganho)',    color: 'bg-green-500',  accent: 'green'  },
-  { id: 'perdido',  title: 'Perdido',            color: 'bg-red-500',    accent: 'red'    },
-];
+// Colunas agora vêm do hook usePipelines (dinâmicas)
 
 const today = new Date().toISOString().split('T')[0];
 
 const initialItems: Lead[] = [
   { id: '1', columnId: 'agendada', title: 'TechCorp Solutions', value: 15000, date: today },
-  { id: '2', columnId: 'agendada', title: 'EducaMais EAD',       value: 8500,  date: today },
-  { id: '3', columnId: 'agendada', title: 'Clinica Sorriso',     value: 5000,  date: today },
-  { id: '4', columnId: 'leads',    title: 'Nova Startup XYZ',    value: 12000, date: today },
-  { id: '5', columnId: 'proposta', title: 'Indústria ABC',       value: 35000, date: today },
+  { id: '2', columnId: 'agendada', title: 'EducaMais EAD', value: 8500, date: today },
+  { id: '3', columnId: 'agendada', title: 'Clinica Sorriso', value: 5000, date: today },
+  { id: '4', columnId: 'leads', title: 'Nova Startup XYZ', value: 12000, date: today },
+  { id: '5', columnId: 'proposta', title: 'Indústria ABC', value: 35000, date: today },
 ];
 
 const toDisplayDate = (iso: string) => {
@@ -86,71 +82,71 @@ const NovoLeadModal = ({ onAdd, onClose, columns }: NovoLeadModalProps) => {
     <Modal isOpen={true} onClose={onClose} title="Novo Lead" maxWidth="max-w-md">
       <form onSubmit={handleSubmit} className="space-y-4">
 
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Empresa / Lead</label>
+          <input
+            type="text"
+            required
+            autoFocus
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+            placeholder="Ex: Empresa ABC"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Empresa / Lead</label>
+            <label className="block text-xs text-gray-400 mb-1">Valor (R$)</label>
             <input
-              type="text"
+              type="number"
               required
-              autoFocus
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              min="0"
+              value={form.value}
+              onChange={(e) => setForm({ ...form, value: e.target.value })}
               className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="Ex: Empresa ABC"
+              placeholder="0,00"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Valor (R$)</label>
-              <input
-                type="number"
-                required
-                min="0"
-                value={form.value}
-                onChange={(e) => setForm({ ...form, value: e.target.value })}
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="0,00"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Data</label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]"
-              />
-            </div>
-          </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Estágio</label>
-            <select
-              value={form.columnId}
-              onChange={(e) => setForm({ ...form, columnId: e.target.value })}
-              className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-            >
-              {columns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
+            <label className="block text-xs text-gray-400 mb-1">Data</label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]"
+            />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="bg-gradient-to-r from-primary to-blue-500 hover:from-blue-700 hover:to-primary text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> Adicionar Lead
-            </button>
-          </div>
-        </form>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Estágio</label>
+          <select
+            value={form.columnId}
+            onChange={(e) => setForm({ ...form, columnId: e.target.value })}
+            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+          >
+            {columns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="bg-gradient-to-r from-primary to-blue-500 hover:from-blue-700 hover:to-primary text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Adicionar Lead
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 };
@@ -168,10 +164,11 @@ interface SortableItemProps {
   id: string;
   item: Lead;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
   onClick: (item: Lead) => void;
 }
 
-const SortableItem = ({ id, item, onDelete, onClick }: SortableItemProps) => {
+const SortableItem = ({ id, item, onDelete, onArchive, onClick }: SortableItemProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
   const style = {
@@ -202,14 +199,24 @@ const SortableItem = ({ id, item, onDelete, onClick }: SortableItemProps) => {
           </div>
           <span className="flex-1 break-words line-clamp-2 leading-tight pr-4">{item.title}</span>
         </h4>
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onDelete(id); }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400 shrink-0"
-          title="Remover lead"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center shrink-0">
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onArchive(id); }}
+            className="text-gray-500 hover:text-blue-400 p-1.5"
+            title="Arquivar lead"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onDelete(id); }}
+            className="text-gray-500 hover:text-red-400 p-1.5"
+            title="Remover lead"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-y-2 mt-auto">
@@ -221,7 +228,7 @@ const SortableItem = ({ id, item, onDelete, onClick }: SortableItemProps) => {
             <Clock className="w-3 h-3 text-orange-500/80" /> {diasStr}
           </span>
         </div>
-        
+
         {waLink && (
           <a
             href={waLink}
@@ -245,9 +252,8 @@ const DroppableColumn = ({ col, children, isOver }: any) => {
   const { setNodeRef } = useDroppable({ id: col.id });
   return (
     <div
-      className={`w-[clamp(240px,20vw,320px)] flex-shrink-0 flex flex-col gap-3 h-full rounded-xl transition-all duration-200 ${
-        isOver ? 'ring-2 ring-blue-500/50 bg-blue-500/5' : ''
-      }`}
+      className={`w-[clamp(240px,20vw,320px)] flex-shrink-0 flex flex-col gap-3 h-full rounded-xl transition-all duration-200 ${isOver ? 'ring-2 ring-blue-500/50 bg-blue-500/5' : ''
+        }`}
     >
       {children(setNodeRef)}
     </div>
@@ -256,11 +262,21 @@ const DroppableColumn = ({ col, children, isOver }: any) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const CrmVendas = () => {
-  const { leads: items, setLeads: setItems, updateLeadStatus, addLead, updateLeadDetails } = useAppContext();
+  const { leads: items, setLeads: setItems, updateLeadStatus, addLead, updateLeadDetails, addTransaction, addClient } = useAppContext();
+  const {
+    pipelines, activePipeline, activePipelineId, setActivePipelineId,
+    addPipeline, deletePipeline,
+    addColumn, updateColumn, removeColumn,
+  } = usePipelines();
+
+  const activeColumns = activePipeline?.columns ?? [];
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [originalColumnId, setOriginalColumnId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showPipelineManager, setShowPipelineManager] = useState(false);
+  const [showPipelinePicker, setShowPipelinePicker] = useState(false);
   const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
   const { showToast, ToastContainer } = useToast();
 
@@ -278,11 +294,12 @@ const CrmVendas = () => {
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) { setOverColumnId(null); return; }
+    // Use activeColumns instead of initialColumns
     const activeItemId = active.id as string;
     const overId = over.id as string;
     if (activeItemId === overId) return;
 
-    const isOverColumn = initialColumns.some((col) => col.id === overId);
+    const isOverColumn = activeColumns.some((col) => col.id === overId);
     if (isOverColumn) {
       setOverColumnId(overId);
       setItems((prev) =>
@@ -300,7 +317,7 @@ const CrmVendas = () => {
     const { active, over } = event;
     setActiveId(null);
     setOverColumnId(null);
-    
+
     if (!over) {
       // Reverter se foi solto fora
       if (originalColumnId) {
@@ -314,7 +331,7 @@ const CrmVendas = () => {
     const overId = over.id as string;
     const activeItem = items.find((item) => item.id === activeItemId);
     const overItem = items.find((item) => item.id === overId);
-    
+
     if (!activeItem) return;
 
     let targetColumnId = originalColumnId;
@@ -328,7 +345,7 @@ const CrmVendas = () => {
     } else if (overItem) {
       targetColumnId = overItem.columnId;
     } else {
-      const isOverColumn = initialColumns.some((col) => col.id === overId);
+      const isOverColumn = activeColumns.some((col) => col.id === overId);
       if (isOverColumn) {
         targetColumnId = overId;
       }
@@ -336,19 +353,46 @@ const CrmVendas = () => {
 
     // Usar o AppContext para lidar com trigger financeiro caso realmente tenha mudado de coluna
     if (targetColumnId && targetColumnId !== originalColumnId) {
-       // Restauramos a coluna original localmente (pra despistar trigger incorreto duplo)
-       setItems((prev) => prev.map((item) => item.id === activeItemId ? { ...item, columnId: originalColumnId } : item));
-       // Deixamos a fonte da verdade fazer o update oficial
-       updateLeadStatus(activeItemId, targetColumnId);
-       
-       if (targetColumnId === 'ganho') {
-         showToast(`O lead "${activeItem.title}" foi fechado! 🎉 Receita gerada.`, 'success');
-       }
+      // Restauramos a coluna original localmente (pra despistar trigger incorreto duplo)
+      setItems((prev) => prev.map((item) => item.id === activeItemId ? { ...item, columnId: originalColumnId } : item));
+      // Deixamos a fonte da verdade fazer o update oficial
+      updateLeadStatus(activeItemId, targetColumnId);
+
+      if (targetColumnId === 'ganho') {
+        showToast(`O lead "${activeItem.title}" foi fechado! 🎉 Receita e cliente gerados.`);
+        
+        // 1. Lógica do Financeiro: Gerar Receita Operacional
+        addTransaction({
+          title: `Fechamento: ${activeItem.title}`,
+          category: 'Receita Operacional',
+          subcategory: 'Vendas CRM',
+          date: new Date().toISOString(),
+          amount: activeItem.value || 0,
+          type: 'income',
+          notes: 'Gerado automaticamente ao ganhar Lead no CRM'
+        });
+
+        // 2. Lógica das Tarefas: Criar Cliente na aba "Clientes Line"
+        addClient({
+          name: activeItem.title,
+          statusId: 's1',
+          assignees: ['https://i.pravatar.cc/150?img=11'],
+          faturamento: `R$ ${activeItem.value.toLocaleString('pt-BR')}`,
+          segmento: 'Cliente Automático',
+          repositorio: '-',
+          ultimaReuniao: '-'
+        });
+
+        // 3. Arquivar após 1 segundo (Tirar de lá)
+        setTimeout(() => {
+          updateLeadDetails(activeItemId, { archived: true });
+        }, 1200);
+      }
     } else {
-       // Apenas salva a ordem
-       setItems((prev) => prev.map((item) => item.id === activeItemId ? { ...item, columnId: targetColumnId! } : item));
+      // Apenas salva a ordem
+      setItems((prev) => prev.map((item) => item.id === activeItemId ? { ...item, columnId: targetColumnId! } : item));
     }
-    
+
     setOriginalColumnId(null);
   };
 
@@ -390,13 +434,37 @@ const CrmVendas = () => {
     >
       <div className="max-w-[1400px] mx-auto w-full flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 flex-shrink-0">
-          <div>
-            <h1 className="text-2xl font-bold mb-1 tracking-tight">CRM & Vendas</h1>
-            <p className="text-gray-400 text-sm">
-              Gerencie seu pipeline de vendas.{' '}
-              <span className="text-red-500">Vendas ganhas geram receita automática no Financeiro.</span>
-            </p>
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold mb-0.5 tracking-tight">CRM & Vendas</h1>
+              <p className="text-gray-500 text-xs">Vendas ganhas geram receita automática no Financeiro.</p>
+            </div>
+            {/* Pipeline selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowPipelinePicker(v => !v)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)' }}
+              >
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                {activePipeline?.name ?? 'Pipeline'}
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+              <AnimatePresence>
+                {showPipelinePicker && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                    className="absolute top-full left-0 mt-1 bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl z-50 min-w-[180px] overflow-hidden">
+                    {pipelines.map(p => (
+                      <button key={p.id} onClick={() => { setActivePipelineId(p.id); setShowPipelinePicker(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors ${activePipelineId === p.id ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                        {p.name}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-lg px-4 py-2 flex items-center gap-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)' }}>
@@ -405,9 +473,7 @@ const CrmVendas = () => {
               </div>
               <div>
                 <div className="text-[10px] text-gray-500 font-medium uppercase">Pipeline Ativo</div>
-                <div className="font-bold text-sm">
-                  R$ {pipelineAtivo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
+                <div className="font-bold text-sm">R$ {pipelineAtivo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
               </div>
             </div>
             <div className="rounded-lg px-4 py-2 flex items-center gap-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)' }}>
@@ -416,15 +482,16 @@ const CrmVendas = () => {
               </div>
               <div>
                 <div className="text-[10px] text-gray-500 font-medium uppercase">Fechado (Mês)</div>
-                <div className="font-bold text-sm">
-                  R$ {fechadoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
+                <div className="font-bold text-sm">R$ {fechadoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
               </div>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
-            >
+            <button onClick={() => setShowPipelineManager(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border text-[13px] font-medium transition-all text-gray-300 hover:text-white hover:bg-white/5"
+              style={{ border: '1px solid var(--border-subtle)' }}>
+              <Settings2 className="w-4 h-4" /> Gerenciar Etapas
+            </button>
+            <button onClick={() => setShowModal(true)}
+              className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all shadow-lg shadow-red-500/20">
               <Plus className="w-4 h-4" /> Novo Lead
             </button>
           </div>
@@ -432,7 +499,7 @@ const CrmVendas = () => {
 
         {/* Board */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-4">
-          <div className="flex gap-4 h-full" style={{ minWidth: `${initialColumns.length * 290}px` }}>
+          <div className="flex gap-4 h-full" style={{ minWidth: `${activeColumns.length * 290}px` }}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCorners}
@@ -440,10 +507,11 @@ const CrmVendas = () => {
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              {initialColumns.map((col) => {
-                const columnItems = items.filter((item) => item.columnId === col.id);
+              {activeColumns.map((col) => {
+                const columnItems = items.filter((item) => item.columnId === col.id && !item.archived);
                 const columnTotal = columnItems.reduce((acc, curr) => acc + curr.value, 0);
                 const isOver = overColumnId === col.id && activeId !== null;
+                const columnItemsFiltered = columnItems;
                 return (
                   <DroppableColumn key={col.id} col={col} isOver={isOver}>
                     {(setNodeRef: any) => (
@@ -479,6 +547,7 @@ const CrmVendas = () => {
                                 id={item.id}
                                 item={item}
                                 onDelete={handleDelete}
+                                onArchive={(id) => updateLeadDetails(id, { archived: true })}
                                 onClick={(lead) => setDrawerLead(lead)}
                               />
                             ))}
@@ -531,16 +600,30 @@ const CrmVendas = () => {
         </div>
       </div>
 
+      {showPipelineManager && (
+        <PipelineManager
+          pipelines={pipelines}
+          activePipelineId={activePipelineId}
+          onClose={() => setShowPipelineManager(false)}
+          onAddPipeline={addPipeline}
+          onDeletePipeline={deletePipeline}
+          onSetActive={setActivePipelineId}
+          onAddColumn={(pid, col) => addColumn(pid, col)}
+          onUpdateColumn={(pid, cid, updates) => updateColumn(pid, cid, updates)}
+          onRemoveColumn={(pid, cid) => removeColumn(pid, cid)}
+        />
+      )}
+
       <AnimatePresence>
         {showModal && (
           <NovoLeadModal
             onAdd={(lead) => {
               addLead(lead);
               setShowModal(false);
-              showToast('Lead adicionado', 'success');
+              showToast('Lead adicionado');
             }}
             onClose={() => setShowModal(false)}
-            columns={initialColumns}
+            columns={activeColumns}
           />
         )}
       </AnimatePresence>

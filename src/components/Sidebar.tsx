@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Home, Inbox, CheckSquare, Clock, MoreHorizontal, Plus, Search, ChevronDown, ChevronRight, Folder as FolderIcon, Users, List, BarChart3 } from 'lucide-react';
+import {
+  Home, CheckSquare, MoreHorizontal, Plus, Search,
+  ChevronDown, ChevronRight, Folder as FolderIcon, List, BarChart3, Dna
+} from 'lucide-react';
 import { ViewType, Client } from '../types';
 import { useAppContext } from '../context/AppContext';
 
@@ -14,20 +17,16 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
   const [searchQuery, setSearchQuery] = useState('');
   const [space1Open, setSpace1Open] = useState(true);
   const [space2Open, setSpace2Open] = useState(true);
+  // Ajuste 6: "Clientes Line" agora é uma pasta expansível
+  const [clientesFolderOpen, setClientesFolderOpen] = useState(true);
 
   const taskCount = tasks.length;
-  const clientCount = clients.length;
 
-  // Filter nav items by search
-  const items = useMemo(() => {
-    const allItems = [
-      { key: 'overview', label: 'Space', parent: 'space1' },
-      { key: 'tasks', label: 'Pão de Queijo KiDelícia', parent: 'space1' },
-      { key: 'clients', label: 'Clientes', parent: 'space2' },
-    ];
-    if (!searchQuery) return allItems;
-    return allItems.filter(i => i.label.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [searchQuery]);
+  // Filter clients by search
+  const filteredClients = useMemo(() => {
+    if (!searchQuery) return clients;
+    return clients.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [clients, searchQuery]);
 
   return (
     <div className="w-[260px] bg-[#0d0d0d] border-r border-[#222] flex flex-col h-full overflow-y-auto flex-shrink-0 custom-scrollbar">
@@ -82,13 +81,13 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
           <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
         <div className="mt-1 space-y-0.5">
-          {/* Space 1: Demandas */}
-          {(!searchQuery || items.some(i => i.parent === 'space1')) && (
+
+          {/* ─── Space 1: Line (Clientes) ─────────────────────────────── */}
+          {(!searchQuery || filteredClients.length > 0) && (
             <div className="mt-2">
+              {/* Space header */}
               <div
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer group transition-colors ${
-                  (currentView === 'overview' && !searchQuery) ? 'bg-white/10 text-white' : 'hover:bg-white/5'
-                }`}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer group transition-colors hover:bg-white/5"
                 onClick={() => setSpace1Open(!space1Open)}
               >
                 {space1Open ? (
@@ -103,82 +102,108 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
                   <Plus className="w-3 h-3 text-gray-400 hover:text-white" />
                 </div>
               </div>
+
+              {/* Space children */}
               {space1Open && (
                 <div className="ml-6 pl-2 border-l border-[#333333] mt-1 space-y-0.5">
-                  {(!searchQuery || items.some(i => i.key === 'overview' || i.label.includes('Clientes Line'))) && (
-                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer text-gray-400 hover:text-gray-200 transition-colors">
-                      <FolderIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium">Clientes Line</span>
-                    </div>
-                  )}
-                  {/* Lista dinâmica de clientes cadastrados caindo no Spaces */}
-                  {clients.map(client => {
-                    const matchesSearch = !searchQuery || client.name.toLowerCase().includes(searchQuery.toLowerCase());
-                    if (!matchesSearch) return null;
-                    return (
-                      <div
-                        key={client.id}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                          currentView === 'tasks' || currentView === 'board' || currentView === 'calendar'
-                            ? 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                            : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                        }`}
-                        onClick={() => {
-                          if (onOpenClientDetails) {
-                            onOpenClientDetails(client);
-                          } else {
-                            onViewChange('tasks');
-                          }
-                        }}
-                      >
-                        <List className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium truncate w-32" title={client.name}>{client.name}</span>
-                        <span className="ml-auto text-[10px] text-gray-500 font-medium">{taskCount}</span>
+                  {/* ── Pasta "Clientes Line" — expansível (Ajuste 6) ── */}
+                  <div>
+                    <div
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200 transition-colors group"
+                    >
+                      <button onClick={() => setClientesFolderOpen(!clientesFolderOpen)} className="p-0.5 hover:bg-white/10 rounded">
+                        {clientesFolderOpen ? (
+                          <ChevronDown className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                        )}
+                      </button>
+                      <div className="flex items-center gap-2 flex-1" onClick={() => onViewChange('client-database')}>
+                        <FolderIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className={`text-sm font-medium ${currentView === 'client-database' ? 'text-white' : ''}`}>Clientes Line</span>
                       </div>
-                    );
-                  })}
+                      <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                        <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" />
+                      </div>
+                    </div>
+
+                    {/* ── Listas de clientes dentro da pasta ── */}
+                    {clientesFolderOpen && (
+                      <div className="ml-5 pl-2 border-l border-[#2a2a2a] mt-0.5 space-y-0.5">
+                        {filteredClients.length === 0 && (
+                          <div className="px-2 py-2 text-[11px] text-gray-600 italic">
+                            Nenhum cliente encontrado
+                          </div>
+                        )}
+                        {filteredClients.map(client => (
+                          <button
+                            key={client.id}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left ${
+                              currentView === 'tasks'
+                                ? 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+                                : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+                            }`}
+                            onClick={() => {
+                              // Ajuste 5: navega para tasks E abre detalhes do cliente
+                              onViewChange('tasks');
+                              if (onOpenClientDetails) {
+                                onOpenClientDetails(client);
+                              }
+                            }}
+                          >
+                            <List className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-sm font-medium truncate flex-1" title={client.name}>
+                              {client.name}
+                            </span>
+                            <span className="text-[10px] text-gray-600 font-medium flex-shrink-0">
+                              {tasks.length}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Space 2: Equipe */}
-          {(!searchQuery || items.some(i => i.parent === 'space2')) && (
-            <div className="mt-2">
-              <div
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer group transition-colors"
-                onClick={() => setSpace2Open(!space2Open)}
-              >
-                {space2Open ? (
-                  <ChevronDown className="w-3 h-3 text-gray-500" />
-                ) : (
-                  <ChevronRight className="w-3 h-3 text-gray-500" />
-                )}
-                <div className="w-5 h-5 rounded bg-red-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">E</div>
-                <span className="text-sm font-medium text-gray-200">Espaço da equipe</span>
-              </div>
-              {space2Open && (
-                <div className="ml-6 pl-2 border-l border-[#333333] mt-1 space-y-0.5">
-                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer text-gray-400 hover:text-gray-200 transition-colors">
-                    <FolderIcon className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-medium">Projetos</span>
-                  </div>
-                  {(!searchQuery || items.some(i => i.key === 'clients')) && (
-                    <div
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                        currentView === 'clients' ? 'bg-[#2b2b2b] text-gray-200' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                      }`}
-                      onClick={() => onViewChange('clients')}
-                    >
-                      <Users className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium">Clientes</span>
-                      <span className="ml-auto text-[10px] text-gray-500 font-medium">{clientCount}</span>
-                    </div>
-                  )}
-                </div>
+          {/* ─── Space 2: Equipe ──────────────────────────────────────── */}
+          {/* Ajuste 6: removido o botão "Clientes" — não faz sentido aqui */}
+          <div className="mt-2">
+            <div
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer group transition-colors"
+              onClick={() => setSpace2Open(!space2Open)}
+            >
+              {space2Open ? (
+                <ChevronDown className="w-3 h-3 text-gray-500" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-gray-500" />
               )}
+              <div className="w-5 h-5 rounded bg-red-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">E</div>
+              <span className="text-sm font-medium text-gray-200">Espaço da equipe</span>
             </div>
-          )}
+            {space2Open && (
+              <div className="ml-6 pl-2 border-l border-[#333333] mt-1 space-y-0.5">
+                {/* Apenas "Projetos" — Clientes foi removido (Ajuste 6) */}
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer text-gray-400 hover:text-gray-200 transition-colors">
+                  <FolderIcon className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-medium">Projetos</span>
+                </div>
+                {/* Ajuste 7: DNA dos Clientes */}
+                <button
+                  onClick={() => onViewChange('dna-clientes')}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+                    currentView === 'dna-clientes' ? 'bg-[#2b2b2b] text-white' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+                  }`}
+                >
+                  <Dna className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <span className="text-sm font-medium">DNA dos Clientes</span>
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </div>

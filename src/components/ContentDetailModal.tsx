@@ -177,15 +177,36 @@ export const ContentDetailModal = ({ content, onClose, onApprove, onRequestChang
             </div>
           </div>
 
-          {/* Histórico de Feedback */}
-          {content.feedback && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
-              <p className="text-[11px] font-bold text-yellow-500 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
-                <MessageSquare className="w-3.5 h-3.5" /> Feedback Atual
-              </p>
-              <p className="text-sm text-gray-200 italic leading-relaxed">"{content.feedback}"</p>
+          {/* Histórico de Feedbacks */}
+          {((content.feedbacks && content.feedbacks.length > 0) || content.feedback) ? (
+            <div className="bg-[#141414] border border-[#222] rounded-xl p-4 flex flex-col flex-1 min-h-[150px] max-h-[300px] overflow-y-auto custom-scrollbar">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageSquare className="w-4 h-4 text-yellow-500" />
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Histórico de Alterações</h3>
+              </div>
+              <div className="flex flex-col gap-3">
+                {content.feedback && (!content.feedbacks || content.feedbacks.length === 0) && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg text-sm text-gray-200">
+                    <span className="text-[10px] font-bold text-yellow-500 block mb-1">Feedback Original</span>
+                    {content.feedback}
+                  </div>
+                )}
+                {content.feedbacks?.map(fb => (
+                  <div key={fb.id} className={`p-3 rounded-lg text-sm shadow-md ${fb.author === 'cliente' ? 'bg-blue-500/10 border border-blue-500/20 text-gray-200 ml-4' : 'bg-[#222] border border-[#333] text-gray-300 mr-4'}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${fb.author === 'cliente' ? 'text-blue-400' : 'text-gray-400'}`}>
+                        {fb.author === 'cliente' ? 'Cliente' : 'Agência'}
+                      </span>
+                      <span className="text-[9px] text-gray-500 font-medium">
+                        {new Date(fb.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      </span>
+                    </div>
+                    <p className="leading-relaxed">{fb.text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
+          ) : null}
 
           {/* Ações (Aprovar / Alterar) */}
           {!readonly && content.status !== 'APROVADO' && (

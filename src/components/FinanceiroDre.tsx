@@ -208,7 +208,7 @@ const FinanceiroDre = () => {
   const handleAdd = (tx: Transaction) => {
     addTransaction(tx);
     setShowModal(false);
-    showToast('Transação registrada', 'success');
+    showToast('Transação registrada');
   };
 
   const handleDelete = useCallback(

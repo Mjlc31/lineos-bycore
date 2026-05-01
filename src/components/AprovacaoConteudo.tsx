@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Play, Image as ImageIcon, FileText, CheckCircle2, MessageSquare, Calendar, X, Plus, Upload, Trash2, MessageCircle, Music, Download, Link as LinkIcon, Copy } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Play, Image as ImageIcon, FileText, CheckCircle2, MessageSquare, Calendar, X, Plus, Upload, Trash2, MessageCircle, Music, Download, Link as LinkIcon, Copy, MoreVertical, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 import useEscapeKey from '../hooks/useEscapeKey';
@@ -7,6 +7,8 @@ import { useToast } from './Toast';
 import { ContentType, ContentStatus, ContentItem } from '../types';
 import { Modal } from './ui/Modal';
 import { ContentDetailModal } from './ContentDetailModal';
+import DNAClientes from './DNAClientes';
+import { ClientDetailModal } from './ClientDetailModal';
 import { ContentCalendarView } from './ContentCalendarView';
 import { supabase } from '../lib/supabase';
 
@@ -64,15 +66,55 @@ const FeedbackModal = ({ onConfirm, onClose, existing }: FeedbackModalProps) => 
 };
 
 // ─── WhatsApp Notification Modal ──────────────────────────────────────────────
-const WhatsAppModal = ({ contentTitle, onConfirm, onClose }: { contentTitle: string; onConfirm: () => void; onClose: () => void }) => {
+const WhatsAppModal = ({ contentTitle, clientEmail, onConfirm, onClose }: { contentTitle: string; clientEmail?: string; onConfirm: () => void; onClose: () => void }) => {
   useEscapeKey(onClose);
+  const [fromNumber, setFromNumber] = useState(
+    localStorage.getItem('line_os_wa_from') || ''
+  );
+  const [toNumber, setToNumber] = useState('');
   const messagePreview = `Olá! O material "${contentTitle}" está pronto para sua revisão. Clique no link para aprovar ou solicitar alterações.`;
+
+  const handleSend = () => {
+    if (fromNumber.trim()) localStorage.setItem('line_os_wa_from', fromNumber.trim());
+    
+    const cleanNumber = toNumber.replace(/\D/g, '');
+    if (cleanNumber) {
+      const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(messagePreview)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+    
+    onConfirm();
+  };
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Disparo de WhatsApp" maxWidth="max-w-md">
       <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Número de Origem</label>
+            <input
+              type="tel"
+              value={fromNumber}
+              onChange={e => setFromNumber(e.target.value)}
+              placeholder="+55 11 99999-9999"
+              className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600"
+            />
+            <p className="text-[10px] text-gray-600 mt-1">Número da sua conta WhatsApp</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Número do Cliente</label>
+            <input
+              type="tel"
+              value={toNumber}
+              onChange={e => setToNumber(e.target.value)}
+              placeholder="+55 11 98888-8888"
+              className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600"
+            />
+            {clientEmail && <p className="text-[10px] text-gray-600 mt-1">{clientEmail}</p>}
+          </div>
+        </div>
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Prévia da Mensagem (Evolution API)</label>
+          <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Prévia da Mensagem</label>
           <div className="w-full bg-[#111] border border-emerald-500/20 rounded-xl p-4 text-sm text-gray-300 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]"></div>
             <p className="italic leading-relaxed">"{messagePreview}"</p>
@@ -83,8 +125,9 @@ const WhatsAppModal = ({ contentTitle, onConfirm, onClose }: { contentTitle: str
             Cancelar
           </button>
           <button
-            onClick={onConfirm}
-            className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center gap-2"
+            onClick={handleSend}
+            disabled={!toNumber.trim()}
+            className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4 fill-white" /> Enviar Mensagem
           </button>
@@ -94,24 +137,43 @@ const WhatsAppModal = ({ contentTitle, onConfirm, onClose }: { contentTitle: str
   );
 };
 
-// ─── Novo Conteúdo Modal ──────────────────────────────────────────────────────
+// ─── ContentFormModal (Novo e Edição) ──────────────────────────────────────────
 const colorMap: Record<ContentType, { color: string; textColor: string; thumbnail: string }> = {
   video: { color: 'from-red-900/80 to-black', textColor: 'text-red-500', thumbnail: 'N' },
   image: { color: 'from-pink-600/80 to-orange-500/80', textColor: 'text-white', thumbnail: 'img' },
-  pdf:   { color: 'bg-gradient-to-br from-gray-300 to-gray-500', textColor: 'text-gray-900', thumbnail: 'pdf' },
+  pdf: { color: 'bg-gradient-to-br from-gray-300 to-gray-500', textColor: 'text-gray-900', thumbnail: 'pdf' },
   audio: { color: 'from-primary/80 to-blue-900/80', textColor: 'text-primary', thumbnail: 'audio' },
 };
 
-const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem, 'id'>) => void; onClose: () => void }) => {
-  const [form, setForm] = useState({ 
-    title: '', 
-    date: new Date().toISOString().split('T')[0],
-    postTime: '',
-    postChannels: [] as string[],
-    postFormat: '',
-    caption: '',
-    clientEmail: ''
+const NovoConteudoModal = ({ 
+  onAdd, onEdit, initialData, onClose 
+}: { 
+  onAdd?: (item: Omit<ContentItem, 'id'>) => void; 
+  onEdit?: (id: number, item: Partial<ContentItem>) => void;
+  initialData?: ContentItem;
+  onClose: () => void; 
+}) => {
+  const isEditing = !!initialData;
+  const [form, setForm] = useState({
+    title: initialData?.title || '',
+    date: initialData?.date || new Date().toISOString().split('T')[0],
+    postTime: initialData?.postTime || '',
+    postChannels: initialData?.postChannels || [] as string[],
+    postFormat: initialData?.postFormat || '',
+    caption: initialData?.caption || '',
+    clientEmail: initialData?.clientEmail || '',
+    customChannel: '',
   });
+  const [outrosChecked, setOutrosChecked] = useState(
+    initialData?.postChannels?.some(c => c.startsWith('Outros:')) || false
+  );
+  useEffect(() => {
+    if (initialData && outrosChecked) {
+      const custom = initialData.postChannels?.find(c => c.startsWith('Outros:'));
+      if (custom) setForm(f => ({ ...f, customChannel: custom.replace('Outros: ', '') }));
+    }
+  }, [initialData]);
+
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { showToast } = useToast();
@@ -125,176 +187,183 @@ const NovoConteudoModal = ({ onAdd, onClose }: { onAdd: (item: Omit<ContentItem,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !form.date) return;
-    
+    if (!form.date) return;
+    if (!isEditing && !file) return;
+
     setIsUploading(true);
-    let finalUrl = URL.createObjectURL(file); // Fallback local instantâneo
-    let determinedType: ContentType = 'video'; 
-    
-    if (file.type.startsWith('audio/')) determinedType = 'audio';
-    else if (file.type.startsWith('image/')) determinedType = 'image';
-    else if (file.type.startsWith('video/')) determinedType = 'video';
-    else if (file.type.includes('pdf')) determinedType = 'pdf';
-    
-    try {
-      if (supabase) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${fileName}`;
+    let finalUrl = initialData?.fileUrl || '';
+    let determinedType: ContentType = initialData?.type || 'video';
 
-        const { error: uploadError } = await supabase.storage.from('conteudos').upload(filePath, file);
+    if (file) {
+      finalUrl = URL.createObjectURL(file);
+      if (file.type.startsWith('audio/')) determinedType = 'audio';
+      else if (file.type.startsWith('image/')) determinedType = 'image';
+      else if (file.type.startsWith('video/')) determinedType = 'video';
+      else if (file.type.includes('pdf')) determinedType = 'pdf';
 
-        if (!uploadError) {
-          const { data } = supabase.storage.from('conteudos').getPublicUrl(filePath);
-          finalUrl = data.publicUrl;
-        } else {
-          console.error("Erro no upload:", uploadError);
-          showToast("Erro ao fazer upload. Usando versão local temporária.", "error");
+      try {
+        if (supabase) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('conteudos').upload(fileName, file);
+
+          if (!uploadError) {
+            const { data } = supabase.storage.from('conteudos').getPublicUrl(fileName);
+            finalUrl = data.publicUrl;
+          }
         }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsUploading(false);
     }
-
-    const meta = colorMap[determinedType];
     
-    onAdd({
-      title: form.title || file.name,
-      type: determinedType,
-      status: 'PENDENTE',
-      date: form.date, // Mantém compatibilidade
-      postDate: form.date, // Data de postagem = data inserida
-      postTime: form.postTime,
-      postChannels: form.postChannels,
-      postFormat: form.postFormat,
-      caption: form.caption,
-      clientEmail: form.clientEmail,
-      feedback: null,
-      fileUrl: finalUrl,
-      ...meta,
-    });
+    setIsUploading(false);
+    const meta = colorMap[determinedType];
+
+    if (isEditing && onEdit && initialData) {
+      onEdit(initialData.id, {
+        title: form.title || initialData.title,
+        date: form.date,
+        postDate: form.date,
+        postTime: form.postTime,
+        postChannels: form.postChannels,
+        postFormat: form.postFormat,
+        caption: form.caption,
+        clientEmail: form.clientEmail,
+        fileUrl: finalUrl,
+        type: determinedType,
+        color: meta.color,
+        textColor: meta.textColor,
+        thumbnail: meta.thumbnail
+      });
+    } else if (onAdd && file) {
+      onAdd({
+        title: form.title || file.name,
+        type: determinedType,
+        status: 'PENDENTE',
+        date: form.date, 
+        postDate: form.date,
+        postTime: form.postTime,
+        postChannels: form.postChannels,
+        postFormat: form.postFormat,
+        caption: form.caption,
+        clientEmail: form.clientEmail,
+        feedback: null,
+        fileUrl: finalUrl,
+        ...meta,
+      });
+    }
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Adicionar Mídia (Upload)" maxWidth="max-w-md">
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <Modal isOpen={true} onClose={onClose} title={isEditing ? "Editar Mídia" : "Adicionar Mídia (Upload)"} maxWidth="max-w-md">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">
+            {isEditing ? 'Substituir Arquivo (Opcional)' : 'Selecione o Arquivo'}
+          </label>
+          <input
+            type="file"
+            required={!isEditing}
+            onChange={handleFileChange}
+            accept="audio/mpeg,video/mp4,image/png,image/jpeg,application/pdf"
+            className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 transition-all custom-scrollbar outline-none focus:ring-1 focus:ring-blue-500/50"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Selecione o Arquivo</label>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Título (Opcional)</label>
             <input
-              type="file"
-              required
-              onChange={handleFileChange}
-              accept="audio/mpeg,video/mp4,image/png,image/jpeg,application/pdf"
-              className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 transition-all custom-scrollbar outline-none focus:ring-1 focus:ring-blue-500/50"
+              type="text"
+              value={form.title}
+              onChange={e => setForm({ ...form, title: e.target.value })}
+              className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
             />
-            <p className="text-[10px] text-gray-500 mt-2">Suportado: mp3, mp4, png, jpeg, pdf</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Título (Opcional)</label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={e => setForm({ ...form, title: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder-gray-600"
-                placeholder="Ex: Campanha Feed"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Data de Postagem</label>
-              <input
-                type="date"
-                required
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all [color-scheme:dark]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Horário de Postagem</label>
-              <input
-                type="time"
-                value={form.postTime}
-                onChange={e => setForm({ ...form, postTime: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all [color-scheme:dark]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Formato</label>
-              <select
-                value={form.postFormat}
-                onChange={e => setForm({ ...form, postFormat: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all"
-              >
-                <option value="">Selecione...</option>
-                <option value="Feed">Feed</option>
-                <option value="Reels">Reels / Shorts / TikTok</option>
-                <option value="Stories">Stories</option>
-                <option value="Carrossel">Carrossel</option>
-              </select>
-            </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Canais</label>
-            <div className="flex flex-wrap gap-2">
-              {['Instagram', 'TikTok', 'YouTube', 'Kwai', 'LinkedIn', 'Facebook'].map(ch => (
-                <label key={ch} className="flex items-center gap-2 bg-[#111] border border-white/10 px-3 py-1.5 rounded-lg text-sm text-gray-300 cursor-pointer hover:border-white/30 transition-all">
-                  <input 
-                    type="checkbox"
-                    checked={form.postChannels.includes(ch)}
-                    onChange={(e) => {
-                      if (e.target.checked) setForm({ ...form, postChannels: [...form.postChannels, ch] });
-                      else setForm({ ...form, postChannels: form.postChannels.filter(c => c !== ch) });
-                    }}
-                    className="accent-blue-500"
-                  />
-                  {ch}
-                </label>
-              ))}
-            </div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Data de Postagem</label>
+            <input
+              type="date"
+              required
+              value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}
+              className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all [color-scheme:dark]"
+            />
           </div>
-          <div>
-             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Email do Cliente (Para Acesso)</label>
-             <input
-                type="email"
-                value={form.clientEmail}
-                onChange={e => setForm({ ...form, clientEmail: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all placeholder-gray-600"
-                placeholder="cliente@email.com"
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Canais</label>
+          <div className="flex flex-wrap gap-2">
+            {['Instagram', 'TikTok', 'YouTube', 'Kwai', 'LinkedIn', 'Facebook'].map(ch => (
+              <label key={ch} className="flex items-center gap-2 bg-[#111] border border-white/10 px-3 py-1.5 rounded-lg text-sm text-gray-300 cursor-pointer hover:border-white/30 transition-all">
+                <input
+                  type="checkbox"
+                  checked={form.postChannels.includes(ch)}
+                  onChange={(e) => {
+                    if (e.target.checked) setForm({ ...form, postChannels: [...form.postChannels, ch] });
+                    else setForm({ ...form, postChannels: form.postChannels.filter(c => c !== ch) });
+                  }}
+                  className="accent-blue-500"
+                />
+                {ch}
+              </label>
+            ))}
+            <label className="flex items-center gap-2 bg-[#111] border border-white/10 px-3 py-1.5 rounded-lg text-sm text-gray-300 cursor-pointer hover:border-white/30 transition-all">
+              <input
+                type="checkbox"
+                checked={outrosChecked}
+                onChange={e => {
+                  setOutrosChecked(e.target.checked);
+                  if (!e.target.checked) {
+                    setForm(f => ({ ...f, postChannels: f.postChannels.filter(c => !c.startsWith('Outros:')), customChannel: '' }));
+                  }
+                }}
+                className="accent-blue-500"
               />
+              Outros
+            </label>
           </div>
-          <div>
-             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Legenda do Post</label>
-             <textarea
-                value={form.caption}
-                onChange={e => setForm({ ...form, caption: e.target.value })}
-                rows={3}
-                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all resize-none placeholder-gray-600 custom-scrollbar"
-                placeholder="Escreva a legenda que acompanhará a postagem..."
-              />
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-white/5">
-            <button type="button" onClick={onClose} disabled={isUploading} className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50">
-              Cancelar
-            </button>
-            <button type="submit" disabled={isUploading} className="bg-gradient-to-r from-primary to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.3)] disabled:opacity-50">
-              {isUploading ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Upload className="w-4 h-4" />}
-              {isUploading ? 'Enviando...' : 'Enviar Arquivo'}
-            </button>
-          </div>
-        </form>
+          {outrosChecked && (
+            <input
+              autoFocus
+              type="text"
+              value={form.customChannel}
+              onChange={e => {
+                const val = e.target.value;
+                setForm(f => ({
+                  ...f,
+                  customChannel: val,
+                  postChannels: [
+                    ...f.postChannels.filter(c => !c.startsWith('Outros:')),
+                    ...(val.trim() ? [`Outros: ${val.trim()}`] : [])
+                  ]
+                }));
+              }}
+              placeholder="Ex: Threads, Pinterest, Telegram..."
+              className="mt-2 w-full bg-[#111] border border-blue-500/40 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/70 transition-all"
+            />
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-4 border-t border-white/5">
+          <button type="button" onClick={onClose} disabled={isUploading} className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" disabled={isUploading} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+            {isUploading ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Concluir Upload')}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AprovacaoConteudo = () => {
-  const { contentItems: contents, addContentItem, updateContentStatus, deleteContentItem } = useAppContext();
+  const { contentItems: contents, addContentItem, updateContentItem, updateContentStatus, deleteContentItem } = useAppContext();
   const [filter, setFilter] = useState<'TODOS' | ContentStatus>('TODOS');
   const [feedbackTarget, setFeedbackTarget] = useState<number | string | null>(null);
-  const [showNovoModal, setShowNovoModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
   const [whatsappTarget, setWhatsappTarget] = useState<number | string | null>(null);
   const [viewingContent, setViewingContent] = useState<ContentItem | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
@@ -310,24 +379,45 @@ const AprovacaoConteudo = () => {
 
   const handleFeedbackConfirm = (text: string) => {
     if (feedbackTarget === null) return;
-    updateContentStatus(Number(feedbackTarget), 'REVISÃO', text);
+    
+    const item = contents.find(c => c.id === Number(feedbackTarget));
+    const currentFeedbacks = item?.feedbacks || [];
+    const newFeedback = {
+      id: Date.now().toString(),
+      text: text,
+      date: new Date().toISOString(),
+      author: 'equipe' as const
+    };
+
+    updateContentItem(Number(feedbackTarget), {
+      status: 'REVISÃO', // Agência envia de volta para revisão
+      feedback: text,
+      feedbacks: [...currentFeedbacks, newFeedback]
+    });
     setFeedbackTarget(null);
+  };
+
+  const handleAddSubmit = (item: Omit<ContentItem, 'id'>) => {
+    addContentItem(item);
+    setShowAddModal(false);
+    showToast('Mídia adicionada com sucesso!');
+  };
+
+  const handleEditSubmit = (id: number, data: Partial<ContentItem>) => {
+    updateContentItem(id, data);
+    setEditingContent(null);
+    showToast('Mídia atualizada com sucesso!');
   };
 
   const handleNotifyConfirm = () => {
     if (whatsappTarget === null) return;
-    showToast("Mensagem enviada com sucesso via WhatsApp!", 'success');
+    showToast("Mensagem enviada com sucesso via WhatsApp!");
     setWhatsappTarget(null);
-  };
-
-  const handleAddContent = (item: Omit<ContentItem, 'id'>) => {
-    addContentItem(item);
-    setShowNovoModal(false);
   };
 
   const handleDelete = useCallback((id: number | string) => {
     deleteContentItem(Number(id));
-    showToast(`Mídia removida com sucesso.`, 'success');
+    showToast(`Mídia removida com sucesso.`);
   }, [deleteContentItem, showToast]);
 
 
@@ -368,7 +458,7 @@ const AprovacaoConteudo = () => {
             <button
               onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/cliente/aprovacao`);
-                showToast('Link do cliente copiado para a área de transferência!', 'success');
+                showToast('Link do cliente copiado para a área de transferência!');
               }}
               className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all border border-zinc-700"
             >
@@ -389,7 +479,7 @@ const AprovacaoConteudo = () => {
               </button>
             </div>
             <button
-              onClick={() => setShowNovoModal(true)}
+              onClick={() => setShowAddModal(true)}
               className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
             >
               <Upload className="w-4 h-4" /> Adicionar Mídia
@@ -410,10 +500,9 @@ const AprovacaoConteudo = () => {
                   transition={{ duration: 0.2 }}
                   className="bg-[#141414] border border-[#222] rounded-2xl overflow-hidden flex flex-col group hover:border-[#444] transition-all hover:shadow-2xl hover:shadow-black/50 relative"
                 >
-                  {/* Header Thumb */}
                   <div className={`relative aspect-video sm:h-auto sm:aspect-video ${content.color} flex items-center justify-center overflow-hidden border-b border-[#222]`}>
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
-                      <button 
+                      <button
                         onClick={() => setViewingContent(content)}
                         className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors border border-white/20 shadow-xl"
                       >
@@ -432,11 +521,10 @@ const AprovacaoConteudo = () => {
                     </div>
 
                     <div className="absolute top-3 right-3 flex gap-2 z-20">
-                      <div className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 border ${
-                        content.status === 'PENDENTE' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                        content.status === 'REVISÃO'  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                        'bg-green-500/20 text-green-400 border-green-500/30'
-                      }`}>
+                      <div className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 border ${content.status === 'PENDENTE' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                          content.status === 'REVISÃO' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                            'bg-green-500/20 text-green-400 border-green-500/30'
+                        }`}>
                         {content.status}
                       </div>
                     </div>
@@ -448,10 +536,10 @@ const AprovacaoConteudo = () => {
                       ) : content.type === 'video' ? (
                         <video src={content.fileUrl} className="w-full h-full object-cover opacity-80 mix-blend-screen" autoPlay muted loop />
                       ) : content.type === 'audio' ? (
-                         <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 backdrop-blur-md relative z-10">
-                           <Music className={`w-8 h-8 ${content.textColor} mb-3`} />
-                           <audio src={content.fileUrl} controls className="w-[85%] max-w-[200px] h-8 opacity-90 transition-opacity z-20 outline-none" />
-                         </div>
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 backdrop-blur-md relative z-10">
+                          <Music className={`w-8 h-8 ${content.textColor} mb-3`} />
+                          <audio src={content.fileUrl} controls className="w-[85%] max-w-[200px] h-8 opacity-90 transition-opacity z-20 outline-none" />
+                        </div>
                       ) : (
                         <div className="w-24 h-32 bg-white/90 shadow-2xl rounded-md flex flex-col p-3 border border-gray-300 transform -rotate-2 relative z-10">
                           <div className="w-1/2 h-2.5 bg-red-500 rounded-sm mb-4"></div>
@@ -460,7 +548,7 @@ const AprovacaoConteudo = () => {
                             <div className="w-full h-1.5 bg-gray-300 rounded"></div>
                             <div className="w-3/4 h-1.5 bg-gray-300 rounded"></div>
                           </div>
-                       </div>
+                        </div>
                       )
                     ) : (
                       <>
@@ -485,18 +573,9 @@ const AprovacaoConteudo = () => {
                     )}
                   </div>
 
-                  {/* Content Body */}
                   <div className="p-5 flex-1 flex flex-col relative bg-gradient-to-b from-[#141414] to-[#0a0a0a]">
-                    {/* Delete Button (visible on hover) */}
-                    <button
-                      onClick={() => handleDelete(content.id)}
-                      className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400 bg-red-400/10 hover:bg-red-400/20 p-2 rounded-lg"
-                      title="Excluir Mídia"
-                    >
-                       <Trash2 className="w-4 h-4" />
-                    </button>
-
                     <h3 className="font-semibold text-[15px] mb-2 text-white pr-6 leading-snug">{content.title}</h3>
+                    
                     <div className="flex items-center gap-3 mb-5">
                       <button onClick={() => setViewMode('calendar')} className="text-xs text-gray-400 hover:text-emerald-400 flex items-center gap-1.5 font-medium transition-colors bg-[#222] hover:bg-[#333] px-2 py-1 rounded">
                         <Calendar className="w-3.5 h-3.5" /> Post: {toDisplayDate(content.postDate)}
@@ -511,59 +590,42 @@ const AprovacaoConteudo = () => {
                       )}
                     </div>
 
-                    {content.feedback && (
-                      <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3.5 mb-5">
-                        <p className="text-[11px] font-bold text-yellow-500 mb-1.5 flex items-center gap-1.5 uppercase tracking-wide">
-                          <MessageSquare className="w-3.5 h-3.5" /> Feedback Solicitado
-                        </p>
-                        <p className="text-sm text-gray-300 italic leading-relaxed">"{content.feedback}"</p>
-                      </div>
-                    )}
-
                     <div className="mt-auto pt-4 flex flex-col gap-3">
                       {content.status === 'APROVADO' ? (
-                        <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-2">
-                          <CheckCircle2 className="w-4 h-4" /> Aprovado pelo Cliente
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => setWhatsappTarget(content.id)}
-                            className="w-full py-2.5 rounded-xl text-sm font-bold text-black bg-emerald-500 border border-emerald-500 hover:bg-emerald-400 hover:border-emerald-400 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]"
-                          >
-                            <MessageCircle className="w-4 h-4 fill-black text-black" /> Notificar Cliente
+                        <div className="flex flex-col gap-2">
+                          <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" /> Aprovado
                           </button>
-                          <div className="grid grid-cols-2 gap-3">
-                            <button
-                              onClick={() => handleApprove(content.id)}
-                              className="py-2.5 rounded-xl text-sm font-medium text-green-400 border border-green-500/20 hover:bg-green-500/10 flex items-center justify-center gap-2 transition-colors hover:border-green-500/40"
-                            >
-                              <CheckCircle2 className="w-4 h-4" /> Aprovar
-                            </button>
-                            <button
-                              onClick={() => handleRequestChange(content.id)}
-                              className="py-2.5 rounded-xl text-sm font-medium text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 flex items-center justify-center gap-2 transition-colors hover:border-yellow-500/40"
-                            >
-                              <MessageSquare className="w-4 h-4" /> Alteração
-                            </button>
-                          </div>
-                        </>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleDelete(content.id)}
+                            className="p-3 rounded-xl bg-[#222] hover:bg-red-500/20 text-gray-400 hover:text-red-400 border border-[#333] hover:border-red-500/30 transition-all"
+                            title="Excluir Mídia"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingContent(content)}
+                            className="p-3 rounded-xl bg-[#222] hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 border border-[#333] hover:border-blue-500/30 transition-all"
+                            title="Editar Mídia"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => setWhatsappTarget(content.id)}
+                            className="p-3 flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-medium flex items-center justify-center gap-2 border border-emerald-500/20 shadow-lg shadow-emerald-500/10 transition-all"
+                          >
+                            <MessageSquare className="w-4 h-4" /> Notificar
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
-
-            {filteredContents.length === 0 && (
-              <motion.div initial={{opacity:0}} animate={{opacity:1}} className="col-span-full py-24 text-center text-gray-500 flex flex-col items-center">
-                <div className="w-16 h-16 rounded-2xl bg-[#141414] border border-[#222] flex items-center justify-center mb-4">
-                   <ImageIcon className="w-8 h-8 text-gray-600" />
-                </div>
-                <h3 className="font-semibold text-gray-400 mb-1">Nenhum conteúdo encontrado</h3>
-                <p className="text-sm">Não há itens para o filtro selecionado.</p>
-              </motion.div>
-            )}
           </div>
         ) : (
           <ContentCalendarView onContentClick={(c) => setViewingContent(c)} />
@@ -574,6 +636,7 @@ const AprovacaoConteudo = () => {
         {whatsappTarget !== null && (
           <WhatsAppModal
             contentTitle={contents.find(c => c.id === whatsappTarget)?.title || ''}
+            clientEmail={contents.find(c => c.id === whatsappTarget)?.clientEmail}
             onConfirm={handleNotifyConfirm}
             onClose={() => setWhatsappTarget(null)}
           />
@@ -585,12 +648,11 @@ const AprovacaoConteudo = () => {
             existing={contents.find(c => c.id === feedbackTarget)?.feedback}
           />
         )}
-        {showNovoModal && (
-          <NovoConteudoModal onAdd={handleAddContent} onClose={() => setShowNovoModal(false)} />
-        )}
+        {showAddModal && <NovoConteudoModal onAdd={handleAddSubmit} onClose={() => setShowAddModal(false)} />}
+        {editingContent && <NovoConteudoModal initialData={editingContent} onEdit={handleEditSubmit} onClose={() => setEditingContent(null)} />}
         {viewingContent !== null && (
-          <ContentDetailModal 
-            content={viewingContent} 
+          <ContentDetailModal
+            content={viewingContent}
             onClose={() => setViewingContent(null)}
             onApprove={handleApprove}
             onRequestChange={handleRequestChange}

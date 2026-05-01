@@ -15,7 +15,7 @@ const toDisplayDate = (iso?: string) => {
 };
 
 const ApprovalClientView = () => {
-  const { contentItems, updateContentStatus } = useAppContext(); 
+  const { contentItems, updateContentItem, updateContentStatus } = useAppContext(); 
   // O backend já filtra (RLS) os itens pelo email do usuário logado (role=CLIENTE).
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const [viewingContent, setViewingContent] = useState<ContentItem | null>(null);
@@ -23,12 +23,26 @@ const ApprovalClientView = () => {
 
   const handleApprove = (id: string | number) => {
     updateContentStatus(Number(id), 'APROVADO', null);
-    showToast('Pronto! Material aprovado com sucesso.', 'success');
+    showToast('Pronto! Material aprovado com sucesso.');
   };
 
   const submitFeedback = (id: string | number, feedbackText: string) => {
-    updateContentStatus(Number(id), 'REVISÃO', feedbackText);
-    showToast('Sua solicitação de alteração foi enviada para a equipe.', 'success');
+    const item = contentItems.find(c => c.id === Number(id));
+    const currentFeedbacks = item?.feedbacks || [];
+    const newFeedback = {
+      id: Date.now().toString(),
+      text: feedbackText,
+      date: new Date().toISOString(),
+      author: 'cliente' as const
+    };
+
+    updateContentItem(Number(id), {
+      status: 'ALTERAÇÃO',
+      feedback: feedbackText, // legado
+      feedbacks: [...currentFeedbacks, newFeedback]
+    });
+    setViewingContent(null);
+    showToast('Sua solicitação de alteração foi enviada para a equipe.');
   };
 
   // Os clientes visualizam preferencialmente o que está Pendente ou em Revisão, mas podem ver aprovados se quiserem.

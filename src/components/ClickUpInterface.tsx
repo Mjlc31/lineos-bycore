@@ -12,6 +12,8 @@ import TaskDashboard from './TaskDashboard';
 import { ViewType, Client } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { Modal } from './ui/Modal';
+import { ContentDetailModal } from './ContentDetailModal';
+import DNAClientes from './DNAClientes';
 import { ClientDetailModal } from './ClientDetailModal';
 
 const ClickUpInterface = () => {
@@ -153,17 +155,19 @@ const ClickUpInterface = () => {
             />
           )}
           {currentView === 'calendar' && <CalendarView />}
+          {currentView === 'dna-clientes' && <DNAClientes />}
         </div>
       </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       {selectedClientDetails && (
         <ClientDetailModal
+          isOpen={true}
           client={selectedClientDetails}
           onClose={() => setSelectedClientDetails(null)}
-          onUpdate={(updates) => {
-            updateClient(selectedClientDetails.id, updates);
-            setSelectedClientDetails({ ...selectedClientDetails, ...updates });
+          onUpdate={(id, updates) => {
+            updateClient(id, updates);
+            setSelectedClientDetails(prev => prev ? { ...prev, ...updates } : null);
           }}
         />
       )}

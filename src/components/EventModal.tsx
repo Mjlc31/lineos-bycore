@@ -12,14 +12,24 @@ interface EventModalProps {
 }
 
 export const EventModal = ({ onAdd, onClose, initialDate }: EventModalProps) => {
-  const { leads } = useAppContext();
+  const { leads, clients } = useAppContext();
+  // Ajuste 12: membros da equipe
+  const TEAM_MEMBERS = [
+    'Arthur de Moraes',
+    'Design',
+    'Copywriter',
+    'Trafégo Pago',
+    'Edição',
+    'Comercial',
+  ];
   const [form, setForm] = useState({
     title: '',
     date: initialDate || new Date().toISOString().split('T')[0],
     time: '14:00',
     duration: '60',
     client: '',
-    platform: 'Google Meet'
+    platform: 'Google Meet',
+    teamMembers: [] as string[], // Ajuste 12
   });
   const [syncGcal, setSyncGcal] = useState(false);
 
@@ -165,7 +175,34 @@ export const EventModal = ({ onAdd, onClose, initialDate }: EventModalProps) => 
               </div>
             </div>
 
-            {/* Integração GCal */}
+            {/* Ajuste 12: participantes da equipe */}
+            <div className="group">
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Participantes da Equipe</label>
+              <div className="flex flex-wrap gap-2">
+                {TEAM_MEMBERS.map(member => {
+                  const selected = form.teamMembers.includes(member);
+                  return (
+                    <button
+                      key={member}
+                      type="button"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        teamMembers: selected
+                          ? f.teamMembers.filter(m => m !== member)
+                          : [...f.teamMembers, member]
+                      }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        selected
+                          ? 'bg-orange-500/20 text-orange-400 border-orange-500/40'
+                          : 'bg-[#1e1e1e] text-gray-400 border-[#333] hover:border-orange-500/30 hover:text-orange-300'
+                      }`}
+                    >
+                      {selected ? '✓ ' : ''}{member}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 flex items-center justify-between mt-4">
                <div>
                  <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
