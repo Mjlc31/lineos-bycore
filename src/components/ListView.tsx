@@ -10,9 +10,10 @@ interface ListViewProps {
   filteredTasks: Task[];
   searchQuery: string;
   filterPriority: string | null;
+  groupBy?: 'status' | 'assignee';
 }
 
-const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps) => {
+const ListView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'status' }: ListViewProps) => {
   const { tasks, setTasks, taskStatuses, addTask, deleteTask, updateTask, addTaskStatus } = useAppContext();
   const { showToast, ToastContainer } = useToast();
   const [newTaskName, setNewTaskName] = useState('');
@@ -25,6 +26,8 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
   const [newStatusName, setNewStatusName] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const dragItem = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   // Close menu on outside click
   useEffect(() => {
@@ -114,10 +117,36 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
     setTimeout(() => showToast(`Status "${newStatusName}" criado`), 0);
   }, [newStatusName, taskStatuses.length, addTaskStatus, showToast]);
 
+  const handleDragStart = (taskId: string) => { dragItem.current = taskId; };
+  const handleDragOver = (e: React.DragEvent, groupId: string) => { e.preventDefault(); setDragOverId(groupId); };
+  const handleDragLeave = () => { setDragOverId(null); };
+  const handleDrop = (groupId: string) => {
+    if (dragItem.current && groupBy === 'status') {
+      updateTask(dragItem.current, { statusId: groupId });
+    }
+    dragItem.current = null;
+    setDragOverId(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent, statusId: string) => {
     if (e.key === 'Enter') handleAddTask(statusId);
     else if (e.key === 'Escape') { setAddingToStatus(null); setNewTaskName(''); }
   };
+
+  const assigneesGroups = React.useMemo(() => {
+    const avatars = new Set<string>();
+    tasks.forEach(t => t.assignees.forEach(a => avatars.add(a)));
+    return Array.from(avatars).map((avatar, idx) => ({
+      id: avatar,
+      name: `Responsável ${idx + 1}`,
+      color: '#3b82f6',
+      avatar
+    }));
+  }, [tasks]);
+
+  const groups = groupBy === 'assignee' 
+    ? [...assigneesGroups, { id: 'unassigned', name: 'Não atribuído', color: '#6b7280', avatar: '' }]
+    : taskStatuses;
 
   // Use filteredTasks (which has search + priority applied) from the parent
   const isFiltering = !!searchQuery || !!filterPriority;
@@ -147,20 +176,31 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
       </div>
 
       <div className="space-y-6">
-        {taskStatuses.map(status => {
+        {groups.map((group: any) => {
           // Use filteredTasks so search/filter actually works in the UI
-          const statusTasks = filteredTasks.filter(t => t.statusId === status.id);
-          const isCollapsed = collapsedStatuses.has(status.id);
+          const groupTasks = groupBy === 'assignee' 
+            ? filteredTasks.filter(t => group.id === 'unassigned' ? t.assignees.length === 0 : t.assignees.includes(group.id))
+            : filteredTasks.filter(t => t.statusId === group.id);
+            
+          const isCollapsed = collapsedStatuses.has(group.id);
 
           // In filtering mode, hide empty status groups
-          if (isFiltering && statusTasks.length === 0) return null;
+          if (isFiltering && groupTasks.length === 0) return null;
+
+          const isDragOver = dragOverId === group.id;
 
           return (
-            <div key={status.id} className="flex flex-col">
+            <div 
+              key={group.id} 
+              className={`flex flex-col rounded-lg transition-colors ${isDragOver ? 'bg-white/5 ring-1 ring-primary/30 p-2 -mx-2' : ''}`}
+              onDragOver={(e) => handleDragOver(e, group.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={() => handleDrop(group.id)}
+            >
               {/* Status Header */}
               <div
                 className="flex items-center gap-2 mb-2 group cursor-pointer sticky top-0 bg-[#141414] py-1 z-10"
-                onClick={() => toggleCollapse(status.id)}
+                onClick={() => toggleCollapse(group.id)}
               >
                 {isCollapsed ? (
                   <ChevronRight className="w-4 h-4 text-gray-500 hover:text-gray-300 transition-colors" />
@@ -169,47 +209,55 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                 )}
                 <div
                   className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold text-white tracking-wide"
-                  style={{ backgroundColor: status.color }}
+                  style={{ backgroundColor: group.color }}
                 >
-                  <CheckCircle2 className="w-3 h-3" />
-                  {status.name}
+                  {groupBy === 'assignee' && group.avatar ? (
+                    <img src={group.avatar} className="w-4 h-4 rounded-full border border-white/20" alt="Avatar" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3" />
+                  )}
+                  {group.name}
                 </div>
-                <span className="text-xs text-gray-500 font-medium">{statusTasks.length}</span>
+                <span className="text-xs text-gray-500 font-medium">{groupTasks.length}</span>
                 <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 ml-2 transition-opacity">
-                  <Plus
-                    className="w-4 h-4 text-gray-400 hover:text-gray-200"
-                    onClick={(e) => { e.stopPropagation(); setAddingToStatus(status.id); }}
-                  />
+                  {groupBy === 'status' && (
+                    <Plus
+                      className="w-4 h-4 text-gray-400 hover:text-gray-200"
+                      onClick={(e) => { e.stopPropagation(); setAddingToStatus(group.id); }}
+                    />
+                  )}
                 </div>
               </div>
               {/* Tasks List */}
               <AnimatePresence initial={false}>
                 {!isCollapsed && (
                   <motion.div
-                    key={`tasks-${status.id}`}
+                    key={`tasks-${group.id}`}
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.15 }}
                     className="flex flex-col border-l border-[#2b2b2b] ml-1 pl-3 overflow-hidden"
                   >
-                    {statusTasks.map(task => (
+                    {groupTasks.map(task => (
                       <div
                         key={task.id}
-                        className="flex items-center py-1.5 border-b border-[#2b2b2b] hover:bg-[#1e1e1e] group/row -ml-3 pl-3 pr-2 transition-colors relative"
+                        draggable
+                        onDragStart={() => handleDragStart(task.id)}
+                        className="flex items-center py-1.5 border-b border-[#2b2b2b] hover:bg-[#1e1e1e] group/row -ml-3 pl-3 pr-2 transition-colors relative cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex-1 flex items-center gap-2.5">
                           {/* Botão Círculo Rápido de Status (como Linear) */}
                           <div
                             className="w-3.5 h-3.5 rounded border flex-shrink-0 cursor-pointer hover:scale-110 transition-transform opacity-70 hover:opacity-100 flex items-center justify-center group/status"
-                            style={{ borderColor: status.color }}
+                            style={{ borderColor: taskStatuses.find(s => s.id === task.statusId)?.color || '#333' }}
                             onClick={() => {
                               const currentIndex = taskStatuses.findIndex(s => s.id === task.statusId);
                               const nextStatus = taskStatuses[(currentIndex + 1) % taskStatuses.length];
                               updateTask(task.id, { statusId: nextStatus.id });
                             }}
                           >
-                             <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/status:opacity-100" style={{ color: status.color }} />
+                             <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/status:opacity-100" style={{ color: taskStatuses.find(s => s.id === task.statusId)?.color }} />
                           </div>
 
                           {editingTask?.id === task.id && editingTask?.field === 'name' ? (
@@ -376,20 +424,20 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                     ))}
 
                     {/* Add Task Input */}
-                    {addingToStatus === status.id && (
+                    {addingToStatus === group.id && (
                       <div className="flex items-center py-2 border-b border-[#2b2b2b] -ml-4 pl-4 pr-2">
                         <div className="flex-1 flex items-center gap-3">
                           <div
                             className="w-3.5 h-3.5 rounded-sm border-2 flex-shrink-0"
-                            style={{ borderColor: status.color }}
+                            style={{ borderColor: group.color }}
                           />
                           <input
                             type="text"
                             autoFocus
                             value={newTaskName}
                             onChange={(e) => setNewTaskName(e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(e, status.id)}
-                            onBlur={() => handleAddTask(status.id)}
+                            onKeyDown={(e) => handleKeyDown(e, group.id)}
+                            onBlur={() => handleAddTask(group.id)}
                             placeholder="Nome da tarefa"
                             className="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-600"
                           />
@@ -398,10 +446,10 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
                     )}
 
                     {/* Add Task Row */}
-                    {addingToStatus !== status.id && (
+                    {addingToStatus !== group.id && (
                       <div
                         className="flex items-center py-2 text-sm text-gray-500 hover:text-gray-300 cursor-pointer -ml-4 pl-4 group transition-colors"
-                        onClick={() => setAddingToStatus(status.id)}
+                        onClick={() => setAddingToStatus(group.id)}
                       >
                         <Plus className="w-4 h-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                         Adicionar Tarefa
@@ -458,9 +506,13 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority }: ListViewProps)
       {/* Task Modal */}
       {selectedTask && (
         <TaskModal
-          task={tasks.find(t => t.id === selectedTask.id) || selectedTask}
+          task={filteredTasks.find(t => t.id === selectedTask.id) || selectedTask}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
+          onRelatedTaskClick={(taskId) => {
+            const rt = tasks.find(t => t.id === taskId);
+            if (rt) setSelectedTask(rt);
+          }}
         />
       )}
     </div>

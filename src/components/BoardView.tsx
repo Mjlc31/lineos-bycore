@@ -17,10 +17,11 @@ interface BoardViewProps {
   filteredTasks: Task[];
   searchQuery: string;
   filterPriority: string | null;
+  groupBy?: 'status' | 'assignee';
 }
 
-const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProps) => {
-  const { setTasks, taskStatuses, addTask } = useAppContext();
+const BoardView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'status' }: BoardViewProps) => {
+  const { tasks, setTasks, taskStatuses, addTask } = useAppContext();
   const [newTaskName, setNewTaskName] = useState('');
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -69,41 +70,65 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
     setAddingToColumn(null);
   };
 
+  const assigneesGroups = React.useMemo(() => {
+    const avatars = new Set<string>();
+    tasks.forEach(t => t.assignees.forEach(a => avatars.add(a)));
+    return Array.from(avatars).map((avatar, idx) => ({
+      id: avatar,
+      name: `Responsável ${idx + 1}`,
+      color: '#3b82f6',
+      avatar
+    }));
+  }, [tasks]);
+
+  const groups = groupBy === 'assignee' 
+    ? [...assigneesGroups, { id: 'unassigned', name: 'Não atribuído', color: '#6b7280', avatar: '' }]
+    : taskStatuses;
+
   return (
     <div className="flex gap-4 p-6 h-full overflow-x-auto custom-scrollbar">
-      {taskStatuses.map(status => {
-        const columnTasks = filteredTasks.filter(t => t.statusId === status.id);
-        const isOver = dragOverId === status.id;
+      {groups.map((group: any) => {
+        const columnTasks = groupBy === 'assignee'
+          ? filteredTasks.filter(t => group.id === 'unassigned' ? t.assignees.length === 0 : t.assignees.includes(group.id))
+          : filteredTasks.filter(t => t.statusId === group.id);
+          
+        const isOver = dragOverId === group.id;
 
         // Hide empty columns when filtering
         if (isFiltering && columnTasks.length === 0) return null;
 
         return (
           <div
-            key={status.id}
+            key={group.id}
             className={`flex flex-col min-w-[280px] max-w-[320px] w-[300px] flex-shrink-0 rounded-xl transition-all duration-200 ${
               isOver ? 'bg-white/5 ring-2 ring-primary/40' : 'bg-[#1a1a1a]/50'
             }`}
-            onDragOver={(e) => handleDragOver(e, status.id)}
+            onDragOver={(e) => handleDragOver(e, group.id)}
             onDragLeave={handleDragLeave}
-            onDrop={() => handleDrop(status.id)}
+            onDrop={() => handleDrop(group.id)}
           >
             {/* Column Header */}
             <div className="flex items-center justify-between px-3 py-3 border-b border-[#2b2b2b]">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
-                <span className="text-sm font-semibold text-gray-200">{status.name}</span>
+                {groupBy === 'assignee' && group.avatar ? (
+                  <img src={group.avatar} className="w-5 h-5 rounded-full border border-white/20" alt="Avatar" />
+                ) : (
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+                )}
+                <span className="text-sm font-semibold text-gray-200">{group.name}</span>
                 <span className="text-xs text-gray-500 bg-[#2b2b2b] px-1.5 py-0.5 rounded-full font-medium">
                   {columnTasks.length}
                 </span>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setAddingToColumn(status.id)}
-                  className="p-1 text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+                {groupBy === 'status' && (
+                  <button
+                    onClick={() => setAddingToColumn(group.id)}
+                    className="p-1 text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                )}
                 <button className="p-1 text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded transition-colors">
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
@@ -193,7 +218,7 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
               </AnimatePresence>
 
               {/* Add Card Input */}
-              {addingToColumn === status.id && (
+              {addingToColumn === group.id && (
                 <div className="bg-[#1e1e1e] border border-primary/40 rounded-lg p-3 mt-1">
                   <input
                     type="text"
@@ -207,7 +232,7 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
                           const newTask: Task = {
                             id: `task-${Date.now()}`,
                             name: newTaskName,
-                            statusId: status.id,
+                            statusId: group.id,
                             assignees: ['https://i.pravatar.cc/150?img=11'],
                             dueDate: '',
                             priority: 'Normal' as any,
@@ -225,7 +250,7 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
                             const newTask: Task = {
                               id: `task-${Date.now()}`,
                               name: newTaskName,
-                              statusId: status.id,
+                              statusId: group.id,
                               assignees: ['https://i.pravatar.cc/150?img=11'],
                               dueDate: '',
                               priority: 'Normal' as any,
@@ -243,9 +268,9 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
             </div>
 
             {/* Add Card Button */}
-            {addingToColumn !== status.id && (
+            {addingToColumn !== group.id && groupBy === 'status' && (
               <button
-                onClick={() => setAddingToColumn(status.id)}
+                onClick={() => setAddingToColumn(group.id)}
                 className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors m-1 rounded-lg"
               >
                 <Plus className="w-4 h-4" />
@@ -262,6 +287,10 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority }: BoardViewProp
           task={filteredTasks.find(t => t.id === selectedTask.id) || selectedTask}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
+          onRelatedTaskClick={(taskId) => {
+            const rt = tasks.find(t => t.id === taskId);
+            if (rt) setSelectedTask(rt);
+          }}
         />
       )}
     </div>

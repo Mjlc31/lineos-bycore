@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, MessageSquare, Play, FileText, Image as ImageIcon, Music, Calendar } from 'lucide-react';
+import { CheckCircle2, MessageSquare, Play, FileText, Image as ImageIcon, Music, Calendar, X } from 'lucide-react';
 import { ContentItem } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from './Toast';
@@ -24,6 +24,11 @@ const ApprovalClientView = () => {
   const handleApprove = (id: string | number) => {
     updateContentStatus(Number(id), 'APROVADO', null);
     showToast('Pronto! Material aprovado com sucesso.');
+  };
+
+  const handleRevokeApproval = (id: string | number) => {
+    updateContentStatus(Number(id), 'PENDENTE', null);
+    showToast('Aprovação retirada. O material voltou para pendente.');
   };
 
   const submitFeedback = (id: string | number, feedbackText: string) => {
@@ -163,9 +168,16 @@ const ApprovalClientView = () => {
                         </div>
 
                         {content.status === 'APROVADO' ? (
-                          <div className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" /> Aprovado
-                          </div>
+                          <button 
+                            onClick={() => handleRevokeApproval(content.id)}
+                            className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 flex items-center justify-center gap-2 transition-colors group cursor-pointer"
+                            title="Clique para retirar a aprovação"
+                          >
+                            <CheckCircle2 className="w-4 h-4 group-hover:hidden" />
+                            <X className="w-4 h-4 hidden group-hover:block" />
+                            <span className="group-hover:hidden">Aprovado</span>
+                            <span className="hidden group-hover:block">Retirar Aprovação</span>
+                          </button>
                         ) : (
                           <div className="mt-auto pt-2 grid grid-cols-2 gap-3">
                              <button 
@@ -206,6 +218,10 @@ const ApprovalClientView = () => {
             }}
             onRequestChange={(id, txt) => {
               submitFeedback(id, txt);
+              setViewingContent(null);
+            }}
+            onRevokeApproval={(id) => {
+              handleRevokeApproval(id);
               setViewingContent(null);
             }}
           />

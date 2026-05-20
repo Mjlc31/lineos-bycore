@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { ViewType, Client } from '../types';
 import { useAppContext } from '../context/AppContext';
+import { useToast } from './Toast';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -14,6 +15,7 @@ interface SidebarProps {
 
 const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProps) => {
   const { tasks, clients } = useAppContext();
+  const { showToast, ToastContainer } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [space1Open, setSpace1Open] = useState(true);
   const [space2Open, setSpace2Open] = useState(true);
@@ -31,7 +33,10 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
   return (
     <div className="w-[260px] bg-[#0d0d0d] border-r border-[#222] flex flex-col h-full overflow-y-auto flex-shrink-0 custom-scrollbar">
       {/* Workspace Header */}
-      <div className="p-4 flex items-center justify-between hover:bg-[#2b2b2b] cursor-pointer transition-colors">
+      <div 
+        className="p-4 flex items-center justify-between hover:bg-[#2b2b2b] cursor-pointer transition-colors"
+        onClick={() => showToast('Opções do Workspace em breve')}
+      >
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="w-6 h-6 rounded bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
             A
@@ -98,8 +103,8 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
                 <div className="w-5 h-5 rounded bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">S</div>
                 <span className="text-sm font-medium text-gray-200">Space</span>
                 <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                  <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" />
-                  <Plus className="w-3 h-3 text-gray-400 hover:text-white" />
+                  <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Opções do Espaço'); }} />
+                  <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Criar nova pasta no espaço'); }} />
                 </div>
               </div>
 
@@ -123,7 +128,8 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
                         <span className={`text-sm font-medium ${currentView === 'client-database' ? 'text-white' : ''}`}>Clientes Line</span>
                       </div>
                       <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                        <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" />
+                        <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Configurações da pasta'); }} />
+                        <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Criar nova lista'); }} />
                       </div>
                     </div>
 
@@ -206,6 +212,7 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
 
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 };

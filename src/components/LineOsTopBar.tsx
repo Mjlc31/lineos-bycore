@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Search, Bell, Plus, LayoutDashboard, CheckSquare, Users, DollarSign, GraduationCap, Calendar, ChevronRight, FileText, Settings, LogOut, Layers, Zap, Command } from 'lucide-react';
+import { Search, Bell, LayoutDashboard, CheckSquare, Users, DollarSign, GraduationCap, Calendar, ChevronRight, Settings, LogOut, Layers, UserCog, Shield } from 'lucide-react';
 import { LineOsTab } from './LineOsSidebar';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { AccountSettingsModal } from './AccountSettingsModal';
 
 const moduleLabels: Record<LineOsTab, { label: string; icon: React.ElementType }> = {
-  dashboard:   { label: 'Dashboard',              icon: LayoutDashboard },
-  gestor:      { label: 'Gestor de Tarefas',      icon: Layers },
-  aprovacao:   { label: 'Aprovação de Conteúdo',  icon: CheckSquare },
-  crm:         { label: 'CRM & Vendas',           icon: Users },
-  financeiro:  { label: 'Financeiro & DRE',       icon: DollarSign },
-  academy:     { label: 'LINE Academy',            icon: GraduationCap },
-  agendamento: { label: 'Agendamento',             icon: Calendar },
+  dashboard:      { label: 'Dashboard',              icon: LayoutDashboard },
+  gestor:         { label: 'Gestor de Tarefas',      icon: Layers },
+  aprovacao:      { label: 'Aprovação de Conteúdo',  icon: CheckSquare },
+  crm:            { label: 'CRM & Vendas',           icon: Users },
+  financeiro:     { label: 'Financeiro & DRE',       icon: DollarSign },
+  academy:        { label: 'LINE Academy',            icon: GraduationCap },
+  agendamento:    { label: 'Agendamento',             icon: Calendar },
+  usuarios:       { label: 'Gestão de Usuários',     icon: UserCog },
+  configuracoes:  { label: 'Configurações',           icon: Settings },
 };
 
 interface Props {
@@ -21,9 +24,16 @@ interface Props {
 
 const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
   const { label, icon: ActiveIcon } = moduleLabels[activeTab];
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const initials = profile?.fullName
+    ? profile.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'A';
+  const displayName = profile?.fullName?.split(' ')[0] || 'Usuário';
+  const displayRole = profile?.role === 'ADMIN' ? 'Admin' : profile?.role === 'EQUIPE' ? 'Equipe' : 'Cliente';
 
   const closeAll = () => {
     setShowNotifications(false);
@@ -33,6 +43,11 @@ const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
   const handleSignOut = async () => {
     closeAll();
     await signOut();
+  };
+
+  const handleOpenSettings = () => {
+    closeAll();
+    setShowSettings(true);
   };
 
   return (
@@ -129,12 +144,14 @@ const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
               onClick={() => { closeAll(); setShowUserMenu(!showUserMenu); }}
               className={`flex items-center gap-2 cursor-pointer px-2 py-1 rounded-lg transition-all duration-150 ${showUserMenu ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]'}`}
             >
-              <div className="w-7 h-7 rounded-lg bg-[var(--color-primary)] flex items-center justify-center text-white font-semibold text-xs shadow-sm drop-shadow-md">
-                A
+              <div className="w-7 h-7 rounded-lg bg-[var(--color-primary)] flex items-center justify-center text-white font-semibold text-xs shadow-sm drop-shadow-md overflow-hidden">
+                {profile?.avatarUrl
+                  ? <img src={profile.avatarUrl} className="w-full h-full object-cover" />
+                  : initials}
               </div>
               <div className="hidden sm:flex flex-col">
-                <span className="text-[12px] font-medium text-zinc-300 leading-tight">Arthur</span>
-                <span className="text-[10px] font-medium text-zinc-600 leading-tight">Admin</span>
+                <span className="text-[12px] font-medium text-zinc-300 leading-tight">{displayName}</span>
+                <span className="text-[10px] font-medium text-zinc-600 leading-tight">{displayRole}</span>
               </div>
             </div>
             <AnimatePresence>
@@ -148,11 +165,12 @@ const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
                   style={{ background: 'var(--surface-3)', border: '1px solid var(--border-default)' }}
                 >
                   <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <p className="text-[13px] font-semibold text-white">Arthur de Moraes</p>
-                    <p className="text-xs text-zinc-500">admin@lineos.com</p>
+                    <p className="text-[13px] font-semibold text-white">{profile?.fullName || 'Usuário'}</p>
+                    <p className="text-xs text-zinc-500">{profile?.email || ''}</p>
+                    <span className="text-[10px] mt-1 inline-block px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">{displayRole}</span>
                   </div>
                   <div className="py-1">
-                    <button onClick={closeAll} className="w-full text-left px-4 py-2 text-[13px] text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200 flex items-center gap-2 transition-colors">
+                    <button onClick={handleOpenSettings} className="w-full text-left px-4 py-2 text-[13px] text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200 flex items-center gap-2 transition-colors">
                       <Settings className="w-4 h-4" strokeWidth={1.75} /> Configurações
                     </button>
                   </div>
@@ -167,6 +185,11 @@ const LineOsTopBar = ({ activeTab, onOpenPalette }: Props) => {
           </div>
         </div>
       </header>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} />}
+      </AnimatePresence>
     </>
   );
 };

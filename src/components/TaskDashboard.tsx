@@ -140,6 +140,39 @@ const TaskDashboard = () => {
           </table>
         </div>
       </div>
+
+      {/* Delayed Tasks List */}
+      <div className="mt-8 bg-[#1e1e1e] border border-red-500/20 rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-red-500/10 bg-red-500/5">
+          <h3 className="text-sm font-semibold text-red-400 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> Tarefas Atrasadas Detalhadas
+          </h3>
+        </div>
+        <div className="p-4">
+          {tasks.filter(t => t.dueDate && t.dueDate.includes('atrás') && t.statusId !== 's4').length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">Nenhuma tarefa atrasada no momento. Ótimo trabalho!</p>
+          ) : (
+            <div className="space-y-2">
+              {tasks.filter(t => t.dueDate && t.dueDate.includes('atrás') && t.statusId !== 's4').map(task => (
+                <div key={task.id} className="flex items-center justify-between py-2 px-3 bg-[#141414] rounded-lg border border-[#2b2b2b]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-sm font-medium text-gray-200">{task.name}</span>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <span className="text-xs font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded">{task.dueDate}</span>
+                    <div className="flex -space-x-2">
+                      {task.assignees.map((avatar, i) => (
+                        <img key={i} src={avatar} className="w-6 h-6 rounded-full border border-[#141414]" alt="Responsável" title="Responsável" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

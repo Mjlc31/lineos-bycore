@@ -51,6 +51,12 @@ export type Automation = {
 };
 
 // ─── Task ──────────────────────────────────────────────────────────────────────
+export type TaskSubtask = {
+  id: string;
+  title: string;
+  completed: boolean;
+};
+
 export type Task = {
   id: string;
   name: string;
@@ -63,6 +69,9 @@ export type Task = {
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
   relatedTaskIds?: string[];
+  subtasks?: TaskSubtask[];
+  timeSpent?: number; // em segundos
+  isTimerRunning?: boolean;
   createdAt?: string;
   completedAt?: string;
 };

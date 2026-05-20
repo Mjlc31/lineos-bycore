@@ -9,6 +9,7 @@ export const statuses: Status[] = [
   { id: 's2', name: 'REVISÃO INTERNA FINAL', color: '#f2c744' },
   { id: 's3', name: 'EM APROVAÇÃO COM CLIENTE', color: '#fd7120' },
   { id: 's4', name: 'PRONTO PARA POSTAR', color: '#20c997' },
+  { id: 's5', name: 'CONCLUÍDO', color: '#6b7280' },
 ];
 
 export const tasks: Task[] = [

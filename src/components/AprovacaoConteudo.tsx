@@ -656,6 +656,11 @@ const AprovacaoConteudo = () => {
             onClose={() => setViewingContent(null)}
             onApprove={handleApprove}
             onRequestChange={handleRequestChange}
+            onRevokeApproval={(id) => {
+              updateContentStatus(Number(id), 'PENDENTE', null);
+              setViewingContent(null);
+              showToast('Aprovação retirada com sucesso.');
+            }}
           />
         )}
       </AnimatePresence>

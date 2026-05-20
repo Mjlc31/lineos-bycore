@@ -13,6 +13,8 @@ interface TopBarProps {
   onSearchChange: (query: string) => void;
   filterPriority: string | null;
   onFilterChange: (priority: string | null) => void;
+  groupBy?: 'status' | 'assignee';
+  onGroupByChange?: (group: 'status' | 'assignee') => void;
 }
 
 const TopBar = ({
@@ -24,16 +26,18 @@ const TopBar = ({
   onSearchChange,
   filterPriority,
   onFilterChange,
+  groupBy = 'status',
+  onGroupByChange,
 }: TopBarProps) => {
   const { showToast, ToastContainer } = useToast();
   const [showSearch, setShowSearch] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  
+
   // Client-specific dropdowns
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [showSubtasksMenu, setShowSubtasksMenu] = useState(false);
-  
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<HTMLDivElement>(null);
@@ -79,20 +83,7 @@ const TopBar = ({
             </>
           )}
           {(currentView === 'tasks' || currentView === 'board' || currentView === 'calendar') && (
-            <>
-              <span className="text-gray-400 hover:underline cursor-pointer" onClick={() => onViewChange('overview')}>Demandas dos clientes</span>
-              <span className="text-gray-600">/</span>
-              <span className="text-gray-400 hover:underline cursor-pointer flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-[#3a2a2a] flex items-center justify-center text-[10px]">💼</span>
-                Clientes Line
-              </span>
-              <span className="text-gray-600">/</span>
-              <span className="font-semibold text-gray-200 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-[#2a2a2a] flex items-center justify-center text-[10px]">📝</span>
-                Pão de Queijo KiDelícia
-              </span>
-              <ChevronDown className="w-3 h-3 text-gray-500 ml-1 cursor-pointer" />
-            </>
+            <span className="font-semibold text-gray-200 text-lg tracking-tight">Minhas Tarefas</span>
           )}
           {(currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database') && (
             <>
@@ -111,13 +102,7 @@ const TopBar = ({
         </div>
 
         <div className="flex items-center gap-4 text-sm text-gray-400">
-          <div className="flex items-center gap-1 hover:text-gray-200 cursor-pointer transition-colors" onClick={() => showToast('Iniciando chamada...')}>
-            <Phone className="w-4 h-4" />
-          </div>
-          <div className="flex items-center gap-1 hover:text-gray-200 cursor-pointer transition-colors" onClick={() => showToast('Gerenciando Agentes')}>
-            <Users className="w-4 h-4" />
-            <span>Agentes</span>
-          </div>
+
           {(currentView === 'tasks' || currentView === 'board' || currentView === 'calendar') && (
             <div className="flex items-center gap-1 hover:text-gray-200 cursor-pointer transition-colors" onClick={() => showToast('Exibindo automações...')}>
               <Zap className="w-4 h-4 text-yellow-500 fill-yellow-500" />
@@ -195,15 +180,17 @@ const TopBar = ({
       {currentView !== 'overview' && (
         <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-2">
-            
+
             {/* Group Menu */}
             <div className="relative" ref={groupRef}>
-              <button 
+              <button
                 onClick={() => setShowGroupMenu(!showGroupMenu)}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#2b2b2b] hover:bg-[#333333] rounded text-gray-300 transition-colors border border-transparent hover:border-[#444]"
               >
                 <Filter className="w-3 h-3" />
-                {currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database' ? 'Grupo: Status' : 'Status'}
+                {currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database' 
+                  ? 'Grupo: Status' 
+                  : `Agrupar: ${groupBy === 'status' ? 'Status' : 'Responsável'}`}
               </button>
               <AnimatePresence>
                 {showGroupMenu && (
@@ -214,46 +201,47 @@ const TopBar = ({
                     className="absolute left-0 top-full mt-1 bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl z-50 w-40 py-1"
                   >
                     <div className="px-3 py-1.5 text-[10px] text-gray-500 font-bold uppercase tracking-wider">Agrupar por</div>
-                    <button className="w-full text-left px-3 py-1.5 text-xs text-white bg-white/10" onClick={() => setShowGroupMenu(false)}>Status</button>
-                    <button className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-white/5 hover:text-white" onClick={() => { setShowGroupMenu(false); showToast('Agrupamento alternativo em breve');}}>Responsável</button>
-                    <button className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-white/5 hover:text-white" onClick={() => { setShowGroupMenu(false); showToast('Agrupamento alternativo em breve');}}>Nenhum</button>
+                    <button className={`w-full text-left px-3 py-1.5 text-xs ${groupBy === 'status' ? 'text-white bg-white/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`} onClick={() => { onGroupByChange?.('status'); setShowGroupMenu(false); }}>Status</button>
+                    <button className={`w-full text-left px-3 py-1.5 text-xs ${groupBy === 'assignee' ? 'text-white bg-white/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`} onClick={() => { onGroupByChange?.('assignee'); setShowGroupMenu(false); }}>Responsável</button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
             {/* Subtasks Menu */}
-            <div className="relative" ref={subtasksRef}>
-              <button 
-                onClick={() => setShowSubtasksMenu(!showSubtasksMenu)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#2b2b2b] hover:bg-[#333333] rounded text-gray-300 transition-colors border border-transparent hover:border-[#444]"
-              >
-                <List className="w-3 h-3" />
-                {currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database' ? 'Subtarefas' : 'Expandidas'}
-              </button>
-              <AnimatePresence>
-                {showSubtasksMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    className="absolute left-0 top-full mt-1 bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl z-50 w-40 py-1"
-                  >
-                    <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/5 hover:text-white" onClick={() => { setShowSubtasksMenu(false); showToast('Expandindo dependências...'); }}>
-                      Mostrando apenas nível 1
-                    </button>
-                    <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-white bg-white/10" onClick={() => setShowSubtasksMenu(false)}>
-                      Expandir todas
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {(currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database') && (
+              <div className="relative" ref={subtasksRef}>
+                <button
+                  onClick={() => setShowSubtasksMenu(!showSubtasksMenu)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#2b2b2b] hover:bg-[#333333] rounded text-gray-300 transition-colors border border-transparent hover:border-[#444]"
+                >
+                  <List className="w-3 h-3" />
+                  Subtarefas
+                </button>
+                <AnimatePresence>
+                  {showSubtasksMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="absolute left-0 top-full mt-1 bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl z-50 w-40 py-1"
+                    >
+                      <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/5 hover:text-white" onClick={() => { setShowSubtasksMenu(false); showToast('Expandindo dependências...'); }}>
+                        Mostrando apenas nível 1
+                      </button>
+                      <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-white bg-white/10" onClick={() => setShowSubtasksMenu(false)}>
+                        Expandir todas
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Columns Menu */}
             {(currentView === 'clients' || currentView === 'client-database') && (
               <div className="relative" ref={columnsRef}>
-                <button 
+                <button
                   onClick={() => setShowColumnsMenu(!showColumnsMenu)}
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#2b2b2b] hover:bg-[#333333] rounded text-gray-300 transition-colors border border-transparent hover:border-[#444]"
                 >
@@ -290,11 +278,10 @@ const TopBar = ({
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setShowFilter(!showFilter)}
-                  className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
-                    filterPriority
+                  className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${filterPriority
                       ? 'text-primary bg-primary/10 border border-primary/20'
                       : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   <Filter className="w-3 h-3" />
                   {filterPriority ? `Filtro: ${priorities.find(p => p.value === filterPriority)?.label}` : 'Filtro'}
@@ -317,9 +304,8 @@ const TopBar = ({
                       {priorities.map(p => (
                         <button
                           key={p.value}
-                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                            filterPriority === p.value ? 'text-white bg-white/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                          }`}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${filterPriority === p.value ? 'text-white bg-white/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                            }`}
                           onClick={() => { onFilterChange(filterPriority === p.value ? null : p.value); setShowFilter(false); }}
                         >
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
@@ -391,7 +377,7 @@ const TopBar = ({
                   </>
                 )}
               </button>
-              <button className="bg-primary hover:bg-primary text-white px-1.5 py-1.5 rounded-r transition-colors" onClick={(e) => { e.stopPropagation(); showToast('Ações avançadas de criação')}}>
+              <button className="bg-primary hover:bg-primary text-white px-1.5 py-1.5 rounded-r transition-colors" onClick={(e) => { e.stopPropagation(); showToast('Ações avançadas de criação') }}>
                 <ChevronDown className="w-3 h-3" />
               </button>
             </div>
@@ -406,9 +392,8 @@ const TopBar = ({
 const Tab = ({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) => (
   <div
     onClick={onClick}
-    className={`flex items-center gap-1.5 px-3 py-2 text-sm cursor-pointer border-b-2 ${
-      active ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-    } rounded-t-md transition-all`}
+    className={`flex items-center gap-1.5 px-3 py-2 text-sm cursor-pointer border-b-2 ${active ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+      } rounded-t-md transition-all`}
   >
     {icon}
     <span className="font-medium">{label}</span>

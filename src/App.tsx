@@ -14,6 +14,7 @@ import LoginPage from './components/LoginPage';
 import LineLogo from './components/LineLogo';
 import { useAuth } from './context/AuthContext';
 import ApprovalClientView from './components/ApprovalClientView';
+import UserManagement from './components/UserManagement';
 
 function App() {
   const { session, profile, isAuthLoading } = useAuth();
@@ -39,22 +40,15 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} />;
-      case 'gestor':
-        return <ClickUpInterface />;
-      case 'aprovacao':
-        return <AprovacaoConteudo />;
-      case 'crm':
-        return <CrmVendas />;
-      case 'financeiro':
-        return <FinanceiroDre />;
-      case 'academy':
-        return <Academy />;
-      case 'agendamento':
-        return <Agendamento />;
-      default:
-        return <div className="p-8 text-white">Em desenvolvimento...</div>;
+      case 'dashboard':     return <Dashboard onNavigate={handleNavigate} />;
+      case 'gestor':        return <ClickUpInterface />;
+      case 'aprovacao':     return <AprovacaoConteudo />;
+      case 'crm':           return <CrmVendas />;
+      case 'financeiro':    return <FinanceiroDre />;
+      case 'academy':       return <Academy />;
+      case 'agendamento':   return <Agendamento />;
+      case 'usuarios':      return <UserManagement />;
+      default:              return <div className="p-8 text-white">Em desenvolvimento...</div>;
     }
   };
 

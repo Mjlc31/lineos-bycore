@@ -11,10 +11,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
+  Shield,
+  UserCog,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import LineLogo from './LineLogo';
+import { useAuth } from '../context/AuthContext';
 
 export type LineOsTab =
   | 'dashboard'
@@ -23,7 +26,9 @@ export type LineOsTab =
   | 'crm'
   | 'financeiro'
   | 'academy'
-  | 'agendamento';
+  | 'agendamento'
+  | 'usuarios'
+  | 'configuracoes';
 
 interface Props {
   activeTab: LineOsTab;
@@ -42,6 +47,8 @@ const navItems = [
 
 const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
   const [isExpanded, setIsExpanded] = useLocalStorage('lineos-sidebar-expanded', true);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'ADMIN';
 
   const mainItems = navItems.filter(i => i.section === 'main');
   const toolItems = navItems.filter(i => i.section === 'tools');
@@ -191,6 +198,33 @@ const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
 
       {/* ─── Bottom ──────────────────────────────── */}
       <div className="flex flex-col gap-0.5 px-2 pb-3 border-t pt-3" style={{ borderColor: 'var(--border-subtle)' }}>
+        {/* Admin-only items */}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setActiveTab('usuarios')}
+              title={!isExpanded ? 'Usuários' : undefined}
+              className={`relative flex items-center gap-2.5 h-9 rounded-lg transition-all duration-150
+                ${isExpanded ? 'px-2.5' : 'justify-center px-0'}
+                ${ activeTab === 'usuarios'
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
+                }`}
+            >
+              {activeTab === 'usuarios' && (
+                <motion.div layoutId="sidebar-indicator-bottom" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-[var(--color-primary)]" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
+              )}
+              <UserCog className={`w-[17px] h-[17px] flex-shrink-0 ${activeTab === 'usuarios' ? 'text-red-400' : ''}`} strokeWidth={activeTab === 'usuarios' ? 2 : 1.75} />
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-[13px] font-medium truncate leading-none">
+                    Usuários
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+          </>
+        )}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={`flex items-center gap-2.5 h-9 rounded-lg text-zinc-600 hover:bg-white/[0.04] hover:text-zinc-400 transition-all duration-150

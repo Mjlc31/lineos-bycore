@@ -10,6 +10,7 @@ interface ContentDetailModalProps {
   onClose: () => void;
   onApprove?: (id: number | string) => void;
   onRequestChange?: (id: number | string, feedback: string) => void;
+  onRevokeApproval?: (id: number | string) => void;
   readonly?: boolean;
 }
 
@@ -22,7 +23,7 @@ const channelColors: Record<string, string> = {
   facebook: 'bg-blue-600/10 text-blue-600 border-blue-600/20',
 };
 
-export const ContentDetailModal = ({ content, onClose, onApprove, onRequestChange, readonly = false }: ContentDetailModalProps) => {
+export const ContentDetailModal = ({ content, onClose, onApprove, onRequestChange, onRevokeApproval, readonly = false }: ContentDetailModalProps) => {
   useEscapeKey(onClose);
   const [feedbackText, setFeedbackText] = useState('');
   const [isRequestingChange, setIsRequestingChange] = useState(false);
@@ -246,9 +247,15 @@ export const ContentDetailModal = ({ content, onClose, onApprove, onRequestChang
             </div>
           )}
           {!readonly && content.status === 'APROVADO' && (
-             <div className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Material Aprovado
-             </div>
+             <button 
+               onClick={() => onRevokeApproval && onRevokeApproval(content.id)}
+               className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 flex items-center justify-center gap-2 transition-colors shadow-lg group cursor-pointer"
+             >
+                <CheckCircle2 className="w-4 h-4 group-hover:hidden" />
+                <X className="w-4 h-4 hidden group-hover:block" />
+                <span className="group-hover:hidden">Material Aprovado</span>
+                <span className="hidden group-hover:block">Retirar Aprovação</span>
+             </button>
           )}
 
         </div>
