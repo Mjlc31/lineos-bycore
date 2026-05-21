@@ -48,7 +48,17 @@ const navItems = [
 const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
   const [isExpanded, setIsExpanded] = useLocalStorage('lineos-sidebar-expanded', true);
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'ADMIN';
+  // Mostra o item Usuários para role ADMIN. Usa localStorage como fallback enquanto
+  // o perfil do Supabase ainda está carregando (evita flash de item ausente).
+  const cachedRole = typeof window !== 'undefined' ? localStorage.getItem('line_os_cached_role') : null;
+  const isAdmin = profile?.role === 'ADMIN' || cachedRole === 'ADMIN';
+
+  // Persiste o role no localStorage para acesso imediato no próximo render
+  React.useEffect(() => {
+    if (profile?.role) {
+      localStorage.setItem('line_os_cached_role', profile.role);
+    }
+  }, [profile?.role]);
 
   const mainItems = navItems.filter(i => i.section === 'main');
   const toolItems = navItems.filter(i => i.section === 'tools');
