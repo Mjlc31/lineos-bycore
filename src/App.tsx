@@ -15,6 +15,7 @@ import LineLogo from './components/LineLogo';
 import { useAuth } from './context/AuthContext';
 import ApprovalClientView from './components/ApprovalClientView';
 import UserManagement from './components/UserManagement';
+import RhCatalogo from './components/RhCatalogo';
 
 function App() {
   const { session, profile, isAuthLoading } = useAuth();
@@ -48,6 +49,7 @@ function App() {
       case 'academy':       return <Academy />;
       case 'agendamento':   return <Agendamento />;
       case 'usuarios':      return <UserManagement />;
+      case 'rh':            return <RhCatalogo />;
       default:              return <div className="p-8 text-white">Em desenvolvimento...</div>;
     }
   };

@@ -25,8 +25,8 @@ export const EventModal = ({ onAdd, onClose, initialDate }: EventModalProps) => 
   const [form, setForm] = useState({
     title: '',
     date: initialDate || new Date().toISOString().split('T')[0],
-    time: '14:00',
-    duration: '60',
+    timeStart: '14:00',
+    timeEnd: '15:00',
     client: '',
     platform: 'Google Meet',
     teamMembers: [] as string[], // Ajuste 12
@@ -37,11 +37,9 @@ export const EventModal = ({ onAdd, onClose, initialDate }: EventModalProps) => 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.date || !form.time) return;
+    if (!form.title.trim() || !form.date || !form.timeStart || !form.timeEnd) return;
 
-    const [hours, mins] = form.time.split(':').map(Number);
-    const end = new Date(0, 0, 0, hours, mins + parseInt(form.duration));
-    const timeStr = `${form.time} - ${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
+    const timeStr = `${form.timeStart} - ${form.timeEnd}`;
     const isToday = form.date === new Date().toISOString().split('T')[0];
 
     // Aqui poderia ocorrer a lógica de integração GCal:
@@ -117,27 +115,22 @@ export const EventModal = ({ onAdd, onClose, initialDate }: EventModalProps) => 
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="group">
-                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Hora</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Hora Início</label>
                   <input
                     type="time" required
-                    value={form.time}
-                    onChange={e => setForm({ ...form, time: e.target.value })}
+                    value={form.timeStart}
+                    onChange={e => setForm({ ...form, timeStart: e.target.value })}
                     className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors [color-scheme:dark]"
                   />
                 </div>
                 <div className="group">
-                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Duração</label>
-                  <select
-                    value={form.duration}
-                    onChange={e => setForm({ ...form, duration: e.target.value })}
-                    className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
-                  >
-                    <option value="15">15 min</option>
-                    <option value="30">30 min</option>
-                    <option value="60">1 H</option>
-                    <option value="90">1.5 H</option>
-                    <option value="120">2 H</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Hora Fim</label>
+                  <input
+                    type="time" required
+                    value={form.timeEnd}
+                    onChange={e => setForm({ ...form, timeEnd: e.target.value })}
+                    className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors [color-scheme:dark]"
+                  />
                 </div>
               </div>
             </div>
@@ -145,19 +138,16 @@ export const EventModal = ({ onAdd, onClose, initialDate }: EventModalProps) => 
             {/* Cliente (Link CRM) e Plataforma */}
             <div className="p-4 rounded-xl bg-[#0a0a0a] border border-[#2b2b2b] space-y-4">
               <div className="group">
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Vincular a um Lead (CRM)</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider group-focus-within:text-orange-500 transition-colors">Cliente ou Projeto</label>
                 <div className="relative">
                   <Users className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-orange-500 transition-colors" />
-                  <select
+                  <input
+                    type="text"
                     value={form.client}
                     onChange={e => setForm({ ...form, client: e.target.value })}
-                    className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none"
-                  >
-                    <option value="">Sem vínculo (Reunião Interna)</option>
-                    {leads.map(lead => (
-                      <option key={lead.id} value={lead.title}>{lead.title}</option>
-                    ))}
-                  </select>
+                    className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors"
+                    placeholder="Ex: Coca-Cola, Apple ou Interno"
+                  />
                 </div>
               </div>
               <div className="group">

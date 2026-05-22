@@ -115,14 +115,6 @@ const TopBar = ({
               <span>2</span>
             </div>
           )}
-          <div className="flex items-center gap-1 hover:text-gray-200 cursor-pointer transition-colors" onClick={() => showToast('Abrindo LINE IA...')}>
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span>Pergunte à IA</span>
-          </div>
-          <div className="flex items-center gap-1 hover:text-gray-200 cursor-pointer transition-colors" onClick={() => showToast('Link de compartilhamento copiado!')}>
-            <Share2 className="w-4 h-4" />
-            <span>Compartilhar</span>
-          </div>
         </div>
       </div>
 

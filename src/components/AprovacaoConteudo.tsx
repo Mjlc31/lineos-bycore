@@ -66,13 +66,19 @@ const FeedbackModal = ({ onConfirm, onClose, existing }: FeedbackModalProps) => 
 };
 
 // ─── WhatsApp Notification Modal ──────────────────────────────────────────────
-const WhatsAppModal = ({ contentTitle, clientEmail, onConfirm, onClose }: { contentTitle: string; clientEmail?: string; onConfirm: () => void; onClose: () => void }) => {
+const WhatsAppModal = ({ contentTitle, clientEmail, onConfirm, onClose, selectedCount }: { contentTitle: string; clientEmail?: string; onConfirm: () => void; onClose: () => void; selectedCount?: number }) => {
   useEscapeKey(onClose);
   const [fromNumber, setFromNumber] = useState(
     localStorage.getItem('line_os_wa_from') || ''
   );
   const [toNumber, setToNumber] = useState('');
-  const messagePreview = `Olá! O material "${contentTitle}" está pronto para sua revisão. Clique no link para aprovar ou solicitar alterações.`;
+  
+  const siteUrl = window.location.origin;
+  const linkUrl = clientEmail ? `${siteUrl}/login?email=${encodeURIComponent(clientEmail)}` : siteUrl;
+  
+  const messagePreview = selectedCount && selectedCount > 1
+    ? `Olá! Separamos ${selectedCount} materiais que estão prontos para sua revisão. Acesse o portal para aprovar ou solicitar alterações: ${linkUrl}`
+    : `Olá! O material "${contentTitle}" está pronto para sua revisão. Acesse o portal para aprovar ou solicitar alterações: ${linkUrl}`;
 
   const handleSend = () => {
     if (fromNumber.trim()) localStorage.setItem('line_os_wa_from', fromNumber.trim());
@@ -359,15 +365,32 @@ const NovoConteudoModal = ({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AprovacaoConteudo = () => {
-  const { contentItems: contents, addContentItem, updateContentItem, updateContentStatus, deleteContentItem } = useAppContext();
+  const { contentItems: contents, addContentItem, updateContentItem, updateContentStatus, deleteContentItem, clients } = useAppContext();
   const [filter, setFilter] = useState<'TODOS' | ContentStatus>('TODOS');
+  const [clientFilter, setClientFilter] = useState<string>('TODOS');
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [feedbackTarget, setFeedbackTarget] = useState<number | string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
-  const [whatsappTarget, setWhatsappTarget] = useState<number | string | null>(null);
+  const [whatsappTarget, setWhatsappTarget] = useState<number | string | 'multi' | null>(null);
   const [viewingContent, setViewingContent] = useState<ContentItem | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const { showToast, ToastContainer } = useToast();
+
+  const toggleSelection = (id: number) => {
+    const newSet = new Set(selectedItems);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedItems(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.size === filteredContents.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(filteredContents.map(c => c.id)));
+    }
+  };
 
   const handleApprove = (id: number | string) => {
     updateContentStatus(Number(id), 'APROVADO', null);
@@ -421,13 +444,17 @@ const AprovacaoConteudo = () => {
   }, [deleteContentItem, showToast]);
 
 
-  const filteredContents = contents.filter(c => filter === 'TODOS' || c.status === filter);
+  const filteredContents = contents.filter(c => {
+    const passStatus = filter === 'TODOS' || c.status === filter;
+    const passClient = clientFilter === 'TODOS' || (c.clientEmail && c.clientEmail.toLowerCase() === clientFilter.toLowerCase());
+    return passStatus && passClient;
+  });
 
   const counts = {
-    TODOS: contents.length,
-    PENDENTE: contents.filter(c => c.status === 'PENDENTE').length,
-    'REVISÃO': contents.filter(c => c.status === 'REVISÃO').length,
-    APROVADO: contents.filter(c => c.status === 'APROVADO').length,
+    TODOS: contents.filter(c => clientFilter === 'TODOS' || (c.clientEmail && c.clientEmail.toLowerCase() === clientFilter.toLowerCase())).length,
+    PENDENTE: contents.filter(c => c.status === 'PENDENTE' && (clientFilter === 'TODOS' || (c.clientEmail && c.clientEmail.toLowerCase() === clientFilter.toLowerCase()))).length,
+    'REVISÃO': contents.filter(c => c.status === 'REVISÃO' && (clientFilter === 'TODOS' || (c.clientEmail && c.clientEmail.toLowerCase() === clientFilter.toLowerCase()))).length,
+    APROVADO: contents.filter(c => c.status === 'APROVADO' && (clientFilter === 'TODOS' || (c.clientEmail && c.clientEmail.toLowerCase() === clientFilter.toLowerCase()))).length,
   };
 
   return (
@@ -455,15 +482,32 @@ const AprovacaoConteudo = () => {
                 </button>
               ))}
             </div>
+            
+            {/* Filtro de Clientes */}
+            <select
+              value={clientFilter}
+              onChange={(e) => setClientFilter(e.target.value)}
+              className="bg-[#141414] border border-white/5 text-gray-300 text-sm rounded-xl px-4 py-2 outline-none focus:border-yellow-500/50 transition-colors"
+            >
+              <option value="TODOS">Todos os Clientes</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.name.toLowerCase().replace(/\s/g, '') + '@email.com' /* mockup based on how email might be generated */}>{c.name}</option>
+              ))}
+            </select>
+
             <button
               onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/cliente/aprovacao`);
-                showToast('Link do cliente copiado para a área de transferência!');
+                if (selectedItems.size > 0) {
+                  setWhatsappTarget('multi');
+                } else {
+                  showToast('Selecione pelo menos um conteúdo para gerar o link.', () => {});
+                }
               }}
-              className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all border border-zinc-700"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all border border-emerald-500 shadow-lg shadow-emerald-500/20"
             >
-              <LinkIcon className="w-4 h-4" /> Link do Cliente
+              <LinkIcon className="w-4 h-4" /> Link Builder {selectedItems.size > 0 && `(${selectedItems.size})`}
             </button>
+            
             <div className="flex bg-[#141414] p-1 rounded-xl border border-white/5 mx-2">
               <button
                 onClick={() => setViewMode('grid')}
@@ -510,8 +554,18 @@ const AprovacaoConteudo = () => {
                       </button>
                     </div>
 
+                    {/* Seleção */}
+                    <div 
+                      className="absolute top-3 left-3 z-30 cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); toggleSelection(content.id); }}
+                    >
+                      <div className={`w-5 h-5 rounded border ${selectedItems.has(content.id) ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-black/50 border-white/20 hover:border-white/50'} flex items-center justify-center backdrop-blur-sm transition-colors`}>
+                        {selectedItems.has(content.id) && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </div>
+                    </div>
+
                     {/* Top badges */}
-                    <div className="absolute top-3 left-3 flex gap-2 z-20">
+                    <div className="absolute top-3 left-10 flex gap-2 z-20">
                       <div className="bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 text-white border border-white/10">
                         {content.type === 'video' && <Play className="w-3 h-3" />}
                         {content.type === 'image' && <ImageIcon className="w-3 h-3" />}
@@ -635,8 +689,9 @@ const AprovacaoConteudo = () => {
       <AnimatePresence>
         {whatsappTarget !== null && (
           <WhatsAppModal
-            contentTitle={contents.find(c => c.id === whatsappTarget)?.title || ''}
-            clientEmail={contents.find(c => c.id === whatsappTarget)?.clientEmail}
+            contentTitle={whatsappTarget === 'multi' ? 'Múltiplos Materiais' : (contents.find(c => c.id === whatsappTarget)?.title || '')}
+            clientEmail={whatsappTarget === 'multi' ? (contents.find(c => selectedItems.has(c.id))?.clientEmail) : (contents.find(c => c.id === whatsappTarget)?.clientEmail)}
+            selectedCount={whatsappTarget === 'multi' ? selectedItems.size : undefined}
             onConfirm={handleNotifyConfirm}
             onClose={() => setWhatsappTarget(null)}
           />

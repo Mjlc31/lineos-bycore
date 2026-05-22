@@ -21,6 +21,14 @@ export type TaskComment = {
   createdAt: string; // ISO
 };
 
+// ─── Task Activity (Log) ───────────────────────────────────────────────────────
+export type TaskActivity = {
+  id: string;
+  type: 'status_change' | 'assignee_change' | 'priority_change' | 'system';
+  description: string;
+  createdAt: string;
+};
+
 // ─── Task Attachment ───────────────────────────────────────────────────────────
 export type TaskAttachment = {
   id: string;
@@ -67,6 +75,7 @@ export type Task = {
   priority: Priority;
   tags?: Tag[];
   comments?: TaskComment[];
+  activities?: TaskActivity[];
   attachments?: TaskAttachment[];
   relatedTaskIds?: string[];
   subtasks?: TaskSubtask[];

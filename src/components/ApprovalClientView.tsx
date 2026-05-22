@@ -169,14 +169,16 @@ const ApprovalClientView = () => {
 
                         {content.status === 'APROVADO' ? (
                           <button 
-                            onClick={() => handleRevokeApproval(content.id)}
-                            className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 flex items-center justify-center gap-2 transition-colors group cursor-pointer"
-                            title="Clique para retirar a aprovação"
+                            onClick={() => {
+                              if (window.confirm('Tem certeza que deseja retirar a aprovação deste conteúdo?')) {
+                                handleRevokeApproval(content.id);
+                              }
+                            }}
+                            className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 active:bg-red-500/10 active:text-red-400 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                            title="Toque para retirar a aprovação"
                           >
-                            <CheckCircle2 className="w-4 h-4 group-hover:hidden" />
-                            <X className="w-4 h-4 hidden group-hover:block" />
-                            <span className="group-hover:hidden">Aprovado</span>
-                            <span className="hidden group-hover:block">Retirar Aprovação</span>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Aprovado (Toque p/ desfazer)</span>
                           </button>
                         ) : (
                           <div className="mt-auto pt-2 grid grid-cols-2 gap-3">

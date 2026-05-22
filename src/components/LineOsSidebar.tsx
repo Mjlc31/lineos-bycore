@@ -28,6 +28,7 @@ export type LineOsTab =
   | 'academy'
   | 'agendamento'
   | 'usuarios'
+  | 'rh'
   | 'configuracoes';
 
 interface Props {
@@ -42,6 +43,7 @@ const navItems = [
   { id: 'financeiro', label: 'Financeiro', icon: DollarSign, section: 'main' },
   { id: 'aprovacao', label: 'Conteúdos', icon: CheckSquare, section: 'tools' },
   { id: 'agendamento', label: 'Agenda', icon: Calendar, section: 'tools' },
+  { id: 'rh', label: 'Equipe & RH', icon: UserCog, section: 'tools' },
   { id: 'academy', label: 'Academy', icon: GraduationCap, section: 'tools' },
 ] as const;
 

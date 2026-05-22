@@ -30,6 +30,7 @@ const getPlatformColor = (platform: string) => {
 };
 
 import { EventModal } from './EventModal';
+import { PosGravacaoModal } from './PosGravacaoModal';
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 const Agendamento = () => {
@@ -39,6 +40,7 @@ const Agendamento = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(formatDate(new Date()));
+  const [showPosGravacao, setShowPosGravacao] = useState(false);
   const { showToast, ToastContainer } = useToast();
 
   const handleAddMeeting = (meeting: Omit<Meeting, 'id'>) => {
@@ -160,6 +162,13 @@ const Agendamento = () => {
                 <Table className="w-4 h-4" /> Planilha
               </button>
             </div>
+            <button
+              onClick={() => setShowPosGravacao(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-lg shadow-blue-500/20 transition-all border border-blue-500"
+            >
+              <Video className="w-4 h-4" /> 
+              <span>Relatório Diária</span>
+            </button>
             <button
               onClick={() => setIsDrawerOpen(true)}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg shadow-lg shadow-red-500/20 transition-all"
@@ -499,6 +508,7 @@ const Agendamento = () => {
 
       <AnimatePresence>
         {isDrawerOpen && <EventModal onAdd={handleAddMeeting} onClose={() => setIsDrawerOpen(false)} initialDate={selectedDateStr || undefined} />}
+        {showPosGravacao && <PosGravacaoModal onSend={() => { showToast('Relatório Pós-Gravação concluído e disparado!'); }} onClose={() => setShowPosGravacao(false)} />}
       </AnimatePresence>
       <ToastContainer />
     </motion.div>

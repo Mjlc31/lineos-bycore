@@ -251,7 +251,8 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'statu
                           <div
                             className="w-3.5 h-3.5 rounded border flex-shrink-0 cursor-pointer hover:scale-110 transition-transform opacity-70 hover:opacity-100 flex items-center justify-center group/status"
                             style={{ borderColor: taskStatuses.find(s => s.id === task.statusId)?.color || '#333' }}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const currentIndex = taskStatuses.findIndex(s => s.id === task.statusId);
                               const nextStatus = taskStatuses[(currentIndex + 1) % taskStatuses.length];
                               updateTask(task.id, { statusId: nextStatus.id });

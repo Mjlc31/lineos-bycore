@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { Priority, Tag } from '../../types';
+import useEscapeKey from '../../hooks/useEscapeKey';
 
 const PRIORITIES: { value: Priority; label: string; color: string; icon: string }[] = [
   { value: 'Urgent', label: 'Urgente',  color: 'text-red-400 bg-red-500/10 border-red-500/30',    icon: '🔴' },
@@ -46,6 +47,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export const CreateTaskModal = ({ onClose }: Props) => {
   const { taskStatuses, addTask, tasks } = useAppContext();
+  useEscapeKey(onClose);
 
   const [name, setName]             = useState('');
   const [description, setDescription] = useState('');

@@ -14,6 +14,7 @@ const moduleLabels: Record<LineOsTab, { label: string; icon: React.ElementType }
   academy:        { label: 'LINE Academy',            icon: GraduationCap },
   agendamento:    { label: 'Agendamento',             icon: Calendar },
   usuarios:       { label: 'Gestão de Usuários',     icon: UserCog },
+  rh:             { label: 'Equipe & RH',             icon: UserCog },
   configuracoes:  { label: 'Configurações',           icon: Settings },
 };
 

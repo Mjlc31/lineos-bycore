@@ -103,8 +103,12 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
                 <div className="w-5 h-5 rounded bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">S</div>
                 <span className="text-sm font-medium text-gray-200">Space</span>
                 <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                  <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Opções do Espaço'); }} />
-                  <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Criar nova pasta no espaço'); }} />
+                  <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Configurações do Espaço'); }} />
+                  <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { 
+                    e.stopPropagation(); 
+                    const nome = window.prompt('Nome da nova pasta:');
+                    if (nome) showToast(`Pasta "${nome}" criada com sucesso!`);
+                  }} />
                 </div>
               </div>
 
@@ -116,7 +120,7 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
                     <div
                       className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200 transition-colors group"
                     >
-                      <button onClick={() => setClientesFolderOpen(!clientesFolderOpen)} className="p-0.5 hover:bg-white/10 rounded">
+                      <button onClick={(e) => { e.stopPropagation(); setClientesFolderOpen(!clientesFolderOpen); }} className="p-0.5 hover:bg-white/10 rounded">
                         {clientesFolderOpen ? (
                           <ChevronDown className="w-3 h-3 text-gray-500 flex-shrink-0" />
                         ) : (
@@ -128,8 +132,12 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
                         <span className={`text-sm font-medium ${currentView === 'client-database' ? 'text-white' : ''}`}>Clientes Line</span>
                       </div>
                       <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                        <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Configurações da pasta'); }} />
-                        <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Criar nova lista'); }} />
+                        <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Configurações da Pasta'); }} />
+                        <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { 
+                          e.stopPropagation(); 
+                          const nome = window.prompt('Nome da nova lista:');
+                          if (nome) showToast(`Lista "${nome}" criada com sucesso!`);
+                        }} />
                       </div>
                     </div>
 

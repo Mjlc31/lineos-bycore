@@ -9,6 +9,8 @@ import {
 import { Task, Priority, TaskComment, TaskAttachment } from '../../types';
 import { useAppContext, SYSTEM_USERS } from '../../context/AppContext';
 import { RichTextEditor } from './RichTextEditor';
+import useEscapeKey from '../../hooks/useEscapeKey';
+import { useToast } from '../Toast';
 
 interface TaskModalProps {
   task: Task;
@@ -45,7 +47,9 @@ const AttachmentIcon = ({ type }: { type: string }) => {
 
 // ─── TaskModal ────────────────────────────────────────────────────────────────
 export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onRelatedTaskClick }) => {
-  const { updateTask, addComment, addAttachment, removeAttachment, taskStatuses, tasks } = useAppContext();
+  const { updateTask, addComment, addAttachment, removeAttachment, taskStatuses, tasks, addTask } = useAppContext();
+  const { showToast, ToastContainer } = useToast();
+  useEscapeKey(onClose);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleVal, setTitleVal] = useState(task.name);

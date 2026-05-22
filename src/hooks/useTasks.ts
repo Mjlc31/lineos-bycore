@@ -178,12 +178,30 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
       const oldTask = prev.find(t => t.id === taskId);
       if (!oldTask) return prev;
 
-      // Disparar automações se status mudou
+      let newActivities = [...(oldTask.activities || [])];
+      
+      // Registrar mudança de status
       if (updates.statusId && updates.statusId !== oldTask.statusId) {
         setTimeout(() => runAutomations(taskId, oldTask.statusId, updates.statusId!), 50);
+        newActivities.push({
+          id: `act-${Date.now()}-1`,
+          type: 'status_change',
+          description: `Status alterado de ${oldTask.statusId} para ${updates.statusId}`,
+          createdAt: new Date().toISOString()
+        });
       }
 
-      return prev.map(t => t.id === taskId ? { ...t, ...updates } : t);
+      // Registrar mudança de responsável
+      if (updates.assignees && JSON.stringify(updates.assignees) !== JSON.stringify(oldTask.assignees)) {
+        newActivities.push({
+          id: `act-${Date.now()}-2`,
+          type: 'assignee_change',
+          description: `Responsáveis atualizados`,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      return prev.map(t => t.id === taskId ? { ...t, ...updates, activities: newActivities } : t);
     });
 
     try {

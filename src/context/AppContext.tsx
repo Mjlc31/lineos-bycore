@@ -148,6 +148,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [leadsHook]);
 
+  // ─── Automação Pós-Aprovação ──────────────────────────────────────────────
+  const updateContentStatusWithTask = useCallback((id: number, status: ContentStatus, feedback?: string | null) => {
+    contentHook.updateContentStatus(id, status, feedback);
+    
+    // Sincronizar com tarefa
+    const item = contentHook.contentItems.find(c => c.id === id);
+    if (item && item.linkedTaskId) {
+      // Map de status de Aprovação -> Status da Tarefa
+      const statusMap: Record<ContentStatus, string> = {
+        APROVADO: 's5', // CONCLUÍDO
+        ALTERAÇÃO: 's3', // EM APROVAÇÃO COM CLIENTE (ou REVISÃO se preferir, manteremos em s3)
+        REVISÃO: 's2', // REVISÃO INTERNA
+        PENDENTE: 's4', // PRONTO PARA POSTAR
+      };
+      const newStatus = statusMap[status];
+      if (newStatus) {
+        tasksHook.updateTask(item.linkedTaskId, { statusId: newStatus });
+      }
+    }
+  }, [contentHook, tasksHook]);
+
   return (
     <AppContext.Provider value={{
       // Tasks
@@ -170,7 +191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setContentItems: contentHook.setContentItems,
       addContentItem: contentHook.addContentItem,
       updateContentItem: contentHook.updateContentItem,
-      updateContentStatus: contentHook.updateContentStatus,
+      updateContentStatus: updateContentStatusWithTask,
       deleteContentItem: contentHook.deleteContentItem,
 
       // Transactions
