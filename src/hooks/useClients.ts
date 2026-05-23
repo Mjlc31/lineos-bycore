@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchClients, createClient as createClientDB,
   updateClient as updateClientDB, deleteClient as deleteClientDB,
-  fetchClientStatuses,
+  fetchClientStatuses, fetchComments, addComment as addCommentService
 } from '../services';
-import type { Client, ClientStatus } from '../types';
+import type { Client, ClientStatus, TaskComment } from '../types';
 import { clients as initialClients, clientStatuses as initialClientStatuses } from '../data';
 
 export function useClients() {
@@ -76,6 +76,37 @@ export function useClients() {
     }
   }, []);
 
+  const addClientComment = useCallback(async (clientId: string, comment: Omit<TaskComment, 'id' | 'createdAt'>) => {
+    // Optimistic update
+    const optimisticComment: TaskComment = {
+      ...comment,
+      id: `comment-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    
+    setClients(prev => prev.map(c => 
+      c.id === clientId ? { ...c, comments: [...(c.comments || []), optimisticComment] } : c
+    ));
+
+    try {
+      const saved = await addCommentService(clientId, comment);
+      setClients(prev => prev.map(c => {
+        if (c.id !== clientId) return c;
+        return {
+          ...c,
+          comments: (c.comments || []).map(cm => cm.id === optimisticComment.id ? saved : cm)
+        };
+      }));
+    } catch (err) {
+      console.error('[useClients] addClientComment falhou:', err);
+    }
+  }, []);
+
+  const loadClientComments = useCallback(async (clientId: string) => {
+    const comments = await fetchComments(clientId);
+    setClients(prev => prev.map(c => c.id === clientId ? { ...c, comments } : c));
+  }, []);
+
   return {
     clients, setClients,
     clientStatuses, setClientStatuses,
@@ -83,5 +114,7 @@ export function useClients() {
     addClient,
     updateClient: editClient,
     deleteClient: removeClient,
+    addClientComment,
+    loadClientComments,
   };
 }

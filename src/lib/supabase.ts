@@ -216,7 +216,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _supabase: SupabaseClient<any> | null = null;
+let _supabase: SupabaseClient<Database> | null = null;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
@@ -246,7 +246,7 @@ export const supabase = _supabase;
  * Lança erro explicativo ao invés de falhar silenciosamente.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function requireSupabase(): SupabaseClient<any> {
+export function requireSupabase(): SupabaseClient<Database> {
   if (!_supabase) {
     throw new Error(
       '[LINE OS] Supabase não está configurado. ' +

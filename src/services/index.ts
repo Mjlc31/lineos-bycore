@@ -5,7 +5,11 @@
  *   import { fetchTasks, createTask } from '../services';
  */
 
-export * from './taskService';
+export {
+  fetchTasks, createTask, updateTask, deleteTask,
+  fetchTaskStatuses, createTaskStatus,
+  fetchComments, addComment
+} from './taskService';
 export * from './leadService';
 export * from './contentService';
 export * from './transactionService';

@@ -22,9 +22,10 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 }) => {
   useEscapeKey(onClose, isOpen);
 
-  const { clientStatuses } = useAppContext();
+  const { clientStatuses, addClientComment, loadClientComments } = useAppContext();
   const [formData, setFormData] = useState<Partial<Client>>({});
   const [newComment, setNewComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (client) {
@@ -36,10 +37,23 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
         ultimaReuniao: client.ultimaReuniao || '',
         statusId: client.statusId || '',
       });
+      loadClientComments(client.id);
     }
-  }, [client]);
+  }, [client, loadClientComments]);
 
   if (!isOpen || !client) return null;
+
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    await addClientComment(client.id, {
+      authorName: 'Você', // Ideal seria pegar o nome do usuário logado do useAuth
+      authorAvatar: 'https://i.pravatar.cc/150?img=11',
+      content: newComment.trim(),
+    });
+    setNewComment('');
+    setIsSubmitting(false);
+  };
 
   const handleChange = (field: keyof Client, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -339,43 +353,28 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 {/* Timeline Line */}
                 <div className="absolute left-3 top-2 bottom-0 w-px bg-[#2b2b2b] -z-10" />
 
-                {/* Event 1 */}
-                <div className="flex gap-4">
-                  <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold border border-blue-500/30 flex-shrink-0 mt-0.5 z-10 bg-[#141414]">
-                    A
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[13px] text-gray-300">
-                      <span className="font-semibold text-gray-200">Arthur de Moraes</span> (você) criou esta tarefa
-                    </p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">29 minutos</p>
-                  </div>
-                </div>
-
-                {/* Event 2 */}
-                <div className="flex gap-4">
-                  <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#333] flex items-center justify-center flex-shrink-0 mt-0.5 z-10 bg-[#141414]">
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[13px] text-gray-500 hover:text-gray-300 cursor-pointer transition-colors">
-                      Mostrar mais
-                    </p>
-                  </div>
-                </div>
-
-                {/* Event 3 */}
-                <div className="flex gap-4">
-                  <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30 flex-shrink-0 mt-0.5 z-10 bg-[#141414]">
-                    <Sparkles className="w-3 h-3" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[13px] text-gray-300">
-                      <span className="font-semibold text-purple-400">Brain</span> alterou a prioridade de <span className="text-gray-500">Low</span> para <span className="text-gray-400">Low</span>
-                    </p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">8 minutos</p>
-                  </div>
-                </div>
+                {(client.comments || []).length === 0 ? (
+                  <div className="text-center text-gray-500 text-xs mt-4">Nenhum comentário ainda.</div>
+                ) : (
+                  (client.comments || []).map((comment) => (
+                    <div key={comment.id} className="flex gap-4">
+                      <img 
+                        src={comment.authorAvatar} 
+                        alt={comment.authorName}
+                        className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5 z-10 border border-[#333]" 
+                      />
+                      <div className="flex-1">
+                        <p className="text-[13px] text-gray-300">
+                          <span className="font-semibold text-gray-200">{comment.authorName}</span>
+                        </p>
+                        <p className="text-[13px] text-gray-400 mt-1 whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {new Date(comment.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -385,6 +384,12 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 <textarea
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmitComment();
+                    }
+                  }}
                   placeholder="Escreva um comentário..."
                   className="w-full bg-transparent text-[13px] text-gray-200 placeholder-gray-500 p-3 pb-1 resize-none focus:outline-none min-h-[60px]"
                 />
@@ -402,7 +407,10 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <button className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"><Lock className="w-3.5 h-3.5" /></button>
-                    <button className="w-6 h-6 bg-white/10 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary transition-all">
+                    <button 
+                      onClick={handleSubmitComment}
+                      disabled={!newComment.trim() || isSubmitting}
+                      className="w-6 h-6 bg-white/10 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                       <PlayCircle className="w-3.5 h-3.5" />
                     </button>
                   </div>

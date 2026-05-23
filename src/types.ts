@@ -100,6 +100,7 @@ export type Client = {
   segmento?: string;
   repositorio?: string;
   ultimaReuniao?: string;
+  comments?: TaskComment[];
 };
 
 export type ViewType = 'overview' | 'tasks' | 'clients' | 'board' | 'calendar' | 'client-board' | 'client-database' | 'task-dashboard' | 'dna-clientes';

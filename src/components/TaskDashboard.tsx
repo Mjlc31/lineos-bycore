@@ -5,9 +5,7 @@ import {
   GripVertical, LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Responsive, Layout } from 'react-grid-layout';
-// @ts-ignore
-import { WidthProvider } from 'react-grid-layout';
+import { ResponsiveGridLayout, Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -16,10 +14,9 @@ import { Task } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { format, isToday, isPast, parseISO, isValid } from 'date-fns';
 import { TaskModal } from './ui/TaskModal';
+import { CreateTaskModal } from './ui/CreateTaskModal';
 import { ManageCardsModal } from './ui/ManageCardsModal';
 import useLocalStorage from '../hooks/useLocalStorage';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 // Prioridades do ClickUp
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; flag: string }> = {
@@ -72,6 +69,7 @@ const TaskDashboard = () => {
   
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [layout, setLayout] = useLocalStorage<any[]>('clickup-dashboard-layout-v1', DEFAULT_LAYOUT);
   
   // Apenas garantindo que o layout será carregado montado corretamente no grid
@@ -310,7 +308,10 @@ const TaskDashboard = () => {
                   <div className="py-8 text-center text-xs text-gray-500">Nenhuma tarefa atribuída a você no momento.</div>
                 )}
                 <div className="px-3 py-2 mt-2">
-                  <button className="flex items-center gap-1.5 text-[13px] font-medium text-gray-400 hover:text-white transition-colors">
+                  <button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-1.5 text-[13px] font-medium text-gray-400 hover:text-white transition-colors"
+                  >
                     <Plus className="w-3.5 h-3.5" /> Adicionar tarefa
                   </button>
                 </div>
@@ -342,7 +343,10 @@ const TaskDashboard = () => {
               <p className="text-xs font-medium text-gray-400 max-w-[200px] mb-6">
                 A lista pessoal contém todas as suas tarefas. <span className="text-primary hover:underline cursor-pointer">Saiba mais</span>
               </p>
-              <button className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-xs font-semibold text-gray-200 transition-colors">
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-xs font-semibold text-gray-200 transition-colors"
+              >
                 <Plus className="w-3.5 h-3.5" /> Criar uma tarefa
               </button>
             </div>
@@ -397,7 +401,10 @@ const TaskDashboard = () => {
               <p className="text-xs font-medium text-gray-400 max-w-[220px] mb-6">
                 As Prioridades mantêm as tarefas importantes em uma única lista. <span className="text-primary hover:underline cursor-pointer">Saiba mais</span>
               </p>
-              <button className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-xs font-semibold text-gray-200 transition-colors">
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-xs font-semibold text-gray-200 transition-colors"
+              >
                 <Plus className="w-3.5 h-3.5" /> Criar uma tarefa
               </button>
             </div>
@@ -576,6 +583,10 @@ const TaskDashboard = () => {
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
         />
+      )}
+
+      {isCreateModalOpen && (
+        <CreateTaskModal onClose={() => setIsCreateModalOpen(false)} />
       )}
     </div>
   );

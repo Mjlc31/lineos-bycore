@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   fetchTasks, createTask, updateTask, deleteTask,
-  fetchTaskStatuses, createTaskStatus, addTaskComment,
+  fetchTaskStatuses, createTaskStatus, addComment as addTaskCommentService,
 } from '../services';
 import type {
   Task, Status, Automation, TaskComment, TaskAttachment,
@@ -227,7 +227,7 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
     ));
 
     try {
-      const saved = await addTaskComment(taskId, {
+      const saved = await addTaskCommentService(taskId, {
         authorName: comment.authorName,
         authorAvatar: comment.authorAvatar,
         content,

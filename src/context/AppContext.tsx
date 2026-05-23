@@ -83,6 +83,8 @@ interface AppContextType {
   addClient: (client: Omit<Client, 'id'>) => void;
   deleteClient: (clientId: string) => void;
   updateClient: (clientId: string, updates: Partial<Client>) => void;
+  addClientComment: (clientId: string, comment: Omit<TaskComment, 'id' | 'createdAt'>) => void;
+  loadClientComments: (clientId: string) => Promise<void>;
 
   // CRM Column Actions
   addCrmColumn: (col: Omit<CrmColumn, 'id'>) => void;
@@ -225,6 +227,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addClient: clientsHook.addClient,
       deleteClient: clientsHook.deleteClient,
       updateClient: clientsHook.updateClient,
+      addClientComment: clientsHook.addClientComment,
+      loadClientComments: clientsHook.loadClientComments,
 
       // CRM Column Actions
       addCrmColumn: leadsHook.addCrmColumn,

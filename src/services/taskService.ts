@@ -65,7 +65,7 @@ export async function fetchTasks(): Promise<Task[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('tasks')
-    .select('*')
+    .select('*, task_comments(*), task_attachments(*)')
     .order('sort_order', { ascending: true });
 
   if (error) throw new Error(`[taskService] fetchTasks: ${error.message}`);
@@ -126,15 +126,13 @@ export async function deleteTask(id: string): Promise<void> {
 }
 
 // ─── Comments ────────────────────────────────────────────────────────────────
-export async function fetchTaskComments(taskId: string): Promise<TaskComment[]> {
+export async function fetchComments(entityId: string): Promise<TaskComment[]> {
   if (!supabase) return [];
-  // Buscamos da tabela task_comments (a ser adicionada no schema patch)
-  // Por ora, retorna array vazio se a tabela não existir ainda
   try {
     const { data, error } = await supabase
-      .from('task_comments' as never)
+      .from('task_comments')
       .select('*')
-      .eq('task_id', taskId)
+      .eq('task_id', entityId)
       .order('created_at', { ascending: true });
 
     if (error) return [];
@@ -150,12 +148,11 @@ export async function fetchTaskComments(taskId: string): Promise<TaskComment[]> 
   }
 }
 
-export async function addTaskComment(
-  taskId: string,
+export async function addComment(
+  entityId: string,
   comment: Omit<TaskComment, 'id' | 'createdAt'>
 ): Promise<TaskComment> {
   if (!supabase) {
-    // Fallback: retorna objeto local sem persistir
     return {
       ...comment,
       id: `comment-${Date.now()}`,
@@ -165,9 +162,9 @@ export async function addTaskComment(
 
   try {
     const { data, error } = await supabase
-      .from('task_comments' as never)
+      .from('task_comments')
       .insert({
-        task_id: taskId,
+        task_id: entityId,
         author_name: comment.authorName,
         author_avatar: comment.authorAvatar,
         content: comment.content,
