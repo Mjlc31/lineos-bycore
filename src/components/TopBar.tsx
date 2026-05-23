@@ -15,6 +15,8 @@ interface TopBarProps {
   onFilterChange: (priority: string | null) => void;
   groupBy?: 'status' | 'assignee';
   onGroupByChange?: (group: 'status' | 'assignee') => void;
+  showClosed?: boolean;
+  onToggleClosed?: () => void;
 }
 
 const TopBar = ({
@@ -28,6 +30,8 @@ const TopBar = ({
   onFilterChange,
   groupBy = 'status',
   onGroupByChange,
+  showClosed = true,
+  onToggleClosed,
 }: TopBarProps) => {
   const { showToast, ToastContainer } = useToast();
   const [showSearch, setShowSearch] = useState(false);
@@ -308,6 +312,21 @@ const TopBar = ({
                   )}
                 </AnimatePresence>
               </div>
+            )}
+
+            {/* Closed Toggle — Tasks only */}
+            {(currentView === 'tasks' || currentView === 'board') && (
+              <button
+                onClick={onToggleClosed}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-all ${
+                  showClosed
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                    : 'bg-[#2b2b2b] text-gray-400 border-transparent hover:border-[#444] hover:text-gray-200'
+                }`}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                Fechado
+              </button>
             )}
 
             {(currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database') && (

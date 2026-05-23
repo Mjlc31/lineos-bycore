@@ -1,7 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, Flag, Calendar as CalendarIcon, MoreHorizontal, CheckCircle2, ArrowUp, Trash2, Edit3, ArrowRightLeft, Copy, ListTodo, Clock, GripVertical } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import {
+  ChevronDown, ChevronRight, Plus, Flag, Calendar as CalendarIcon,
+  MoreHorizontal, CheckCircle2, Trash2, Edit3, ArrowRightLeft, Copy,
+  ListTodo, Clock, GripVertical, MessageSquare, User, Circle
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, SYSTEM_USERS } from '../context/AppContext';
 import { useToast } from './Toast';
 import { Task } from '../types';
 import { TaskModal } from './ui/TaskModal';
@@ -11,88 +15,116 @@ interface ListViewProps {
   searchQuery: string;
   filterPriority: string | null;
   groupBy?: 'status' | 'assignee';
+  showClosed?: boolean;
 }
 
-const ListView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'status' }: ListViewProps) => {
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; flag: string }> = {
+  Urgent: { label: 'Urgente', color: '#ef4444', flag: '#ef4444' },
+  High:   { label: 'Alta',    color: '#f59e0b', flag: '#f59e0b' },
+  Normal: { label: 'Normal',  color: '#3b82f6', flag: '#3b82f6' },
+  Low:    { label: 'Baixa',   color: '#6b7280', flag: '#6b7280' },
+  None:   { label: '',        color: 'transparent', flag: '#374151' },
+};
+
+// Formata ISO date para pt-BR
+const formatDate = (d?: string): string => {
+  if (!d) return '';
+  const date = new Date(d + 'T00:00:00');
+  if (isNaN(date.getTime())) return d;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((date.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return 'Hoje';
+  if (diff === 1) return 'Amanhã';
+  if (diff === -1) return 'Ontem';
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+};
+
+// Verifica se data está no passado
+const isOverdue = (d?: string): boolean => {
+  if (!d) return false;
+  const date = new Date(d + 'T00:00:00');
+  if (isNaN(date.getTime())) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return date < today;
+};
+
+const ListView = ({
+  filteredTasks,
+  searchQuery,
+  filterPriority,
+  groupBy = 'status',
+  showClosed = true,
+}: ListViewProps) => {
   const { tasks, setTasks, taskStatuses, addTask, deleteTask, updateTask, addTaskStatus } = useAppContext();
   const { showToast, ToastContainer } = useToast();
-  const [newTaskName, setNewTaskName] = useState('');
+
+  const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
   const [addingToStatus, setAddingToStatus] = useState<string | null>(null);
-  const [editingTask, setEditingTask] = useState<{ id: string; field: string } | null>(null);
-  const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [moveMenuTaskId, setMoveMenuTaskId] = useState<string | null>(null);
+  const [openPriorityId, setOpenPriorityId] = useState<string | null>(null);
+  const [openStatusId, setOpenStatusId] = useState<string | null>(null);
+  const [openAssigneeId, setOpenAssigneeId] = useState<string | null>(null);
+  const [openDateId, setOpenDateId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [addingNewStatus, setAddingNewStatus] = useState(false);
   const [newStatusName, setNewStatusName] = useState('');
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
-  
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const dragItem = useRef<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
+  // Fecha todos os dropdowns ao clicar fora
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setOpenMenuId(null);
         setMoveMenuTaskId(null);
+      }
+      // Fecha dropdowns inline se clicar fora
+      const closest = (target as HTMLElement).closest?.('[data-dropdown]');
+      if (!closest) {
+        setOpenPriorityId(null);
+        setOpenStatusId(null);
+        setOpenAssigneeId(null);
+        setOpenDateId(null);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const toggleCollapse = useCallback((statusId: string) => {
-    setCollapsedStatuses(prev => {
+  const toggleCollapse = useCallback((groupId: string) => {
+    setCollapsedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(statusId)) next.delete(statusId);
-      else next.add(statusId);
+      next.has(groupId) ? next.delete(groupId) : next.add(groupId);
       return next;
     });
   }, []);
 
-  const handleUpdateTask = useCallback((id: string, field: string, value: any) => {
-    updateTask(id, { [field]: value });
-    setEditingTask(null);
-  }, [updateTask]);
-
   const handleAddTask = useCallback((statusId: string) => {
-    if (!newTaskName.trim()) {
-      setAddingToStatus(null);
-      return;
-    }
-    addTask({
-      name: newTaskName,
-      statusId,
-      assignees: ['https://i.pravatar.cc/150?img=11'],
-      dueDate: 'Hoje',
-      priority: 'Normal' as any,
-    });
-    setNewTaskName('');
-    // Keep adding status open for rapid entry like Linear
-  }, [newTaskName, addTask]);
+    const name = (newTaskInputs[statusId] || '').trim();
+    if (!name) { setAddingToStatus(null); return; }
+    addTask({ name, statusId, assignees: [], priority: 'Normal' as any });
+    setNewTaskInputs(prev => ({ ...prev, [statusId]: '' }));
+    setAddingToStatus(null);
+    setTimeout(() => showToast('Tarefa criada!'), 0);
+  }, [newTaskInputs, addTask, showToast]);
 
   const handleDeleteTask = useCallback((taskId: string, taskName: string) => {
-    const deletedTask = tasks.find(t => t.id === taskId);
+    const snapshot = tasks.find(t => t.id === taskId);
     deleteTask(taskId);
     setOpenMenuId(null);
-    setTimeout(() => {
-      showToast(`"${taskName}" removida`, () => {
-        if (deletedTask) setTasks(prev => [...prev, deletedTask]);
-      });
-    }, 0);
+    setTimeout(() => showToast(`"${taskName}" removida`, () => {
+      if (snapshot) setTasks(prev => [...prev, snapshot]);
+    }), 0);
   }, [tasks, deleteTask, setTasks, showToast]);
 
   const handleDuplicateTask = useCallback((task: Task) => {
-    addTask({
-      name: `${task.name} (cópia)`,
-      statusId: task.statusId,
-      assignees: task.assignees,
-      dueDate: task.dueDate,
-      priority: task.priority as any,
-      tags: task.tags,
-    });
+    addTask({ name: `${task.name} (cópia)`, statusId: task.statusId, assignees: task.assignees, dueDate: task.dueDate, priority: task.priority as any, tags: task.tags });
     setOpenMenuId(null);
     setTimeout(() => showToast('Tarefa duplicada'), 0);
   }, [addTask, showToast]);
@@ -101,395 +133,215 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'statu
     updateTask(taskId, { statusId: newStatusId });
     setOpenMenuId(null);
     setMoveMenuTaskId(null);
-    setTimeout(() => showToast('Tarefa movida'), 0);
-  }, [updateTask, showToast]);
+  }, [updateTask]);
+
+  const handleStartEditName = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditingName(task.name);
+  };
+  const handleSaveEditName = (id: string) => {
+    if (editingName.trim()) updateTask(id, { name: editingName.trim() });
+    setEditingTaskId(null);
+  };
+
+  const handleDragStart = (taskId: string) => { dragItem.current = taskId; };
+  const handleDragOver = (e: React.DragEvent, groupId: string) => { e.preventDefault(); setDragOverGroupId(groupId); };
+  const handleDragLeave = () => setDragOverGroupId(null);
+  const handleDrop = (groupId: string) => {
+    if (dragItem.current && groupBy === 'status') updateTask(dragItem.current, { statusId: groupId });
+    dragItem.current = null;
+    setDragOverGroupId(null);
+  };
 
   const handleAddStatus = useCallback(() => {
-    if (!newStatusName.trim()) {
-      setAddingNewStatus(false);
-      return;
-    }
-    const colors = ['#e8384f', '#f2c744', '#fd7120', '#20c997', '#3b82f6', '#8b5cf6', '#ec4899'];
-    const color = colors[taskStatuses.length % colors.length];
-    addTaskStatus({ name: newStatusName.toUpperCase(), color });
-    setNewStatusName('');
-    setAddingNewStatus(false);
+    if (!newStatusName.trim()) { setAddingNewStatus(false); return; }
+    const colors = ['#e8384f','#f2c744','#fd7120','#20c997','#3b82f6','#8b5cf6','#ec4899'];
+    addTaskStatus({ name: newStatusName.toUpperCase(), color: colors[taskStatuses.length % colors.length] });
+    setNewStatusName(''); setAddingNewStatus(false);
     setTimeout(() => showToast(`Status "${newStatusName}" criado`), 0);
   }, [newStatusName, taskStatuses.length, addTaskStatus, showToast]);
 
-  const handleDragStart = (taskId: string) => { dragItem.current = taskId; };
-  const handleDragOver = (e: React.DragEvent, groupId: string) => { e.preventDefault(); setDragOverId(groupId); };
-  const handleDragLeave = () => { setDragOverId(null); };
-  const handleDrop = (groupId: string) => {
-    if (dragItem.current && groupBy === 'status') {
-      updateTask(dragItem.current, { statusId: groupId });
-    }
-    dragItem.current = null;
-    setDragOverId(null);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent, statusId: string) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTask(statusId);
-    }
-    else if (e.key === 'Escape') { 
-      setAddingToStatus(null); 
-      setNewTaskName(''); 
-    }
-  };
-
-  const assigneesGroups = React.useMemo(() => {
+  const assigneesGroups = useMemo(() => {
     const avatars = new Set<string>();
     tasks.forEach(t => t.assignees.forEach(a => avatars.add(a)));
-    return Array.from(avatars).map((avatar, idx) => ({
-      id: avatar,
-      name: `Responsável ${idx + 1}`,
-      color: '#3b82f6',
-      avatar
-    }));
+    return Array.from(avatars).map((avatar, idx) => ({ id: avatar, name: `Responsável ${idx+1}`, color: '#3b82f6', avatar }));
   }, [tasks]);
 
-  const groups = groupBy === 'assignee' 
+  const groups = groupBy === 'assignee'
     ? [...assigneesGroups, { id: 'unassigned', name: 'Não atribuído', color: '#6b7280', avatar: '' }]
     : taskStatuses;
 
   const isFiltering = !!searchQuery || !!filterPriority;
 
+  // Determine "closed" status ids
+  const closedStatusIds = useMemo(() =>
+    taskStatuses.filter(s => s.name.toUpperCase().includes('PRONTO') || s.name.toUpperCase().includes('CONCLU') || s.name.toUpperCase().includes('DONE')).map(s => s.id),
+    [taskStatuses]
+  );
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0a0a0a]">
-      {/* Header Fixo da Tabela */}
-      <div className="sticky top-0 z-20 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 pt-6 pb-3 px-8 flex items-center text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[800px]">
-        <div className="w-[40%] flex items-center pl-8">Tarefa</div>
-        <div className="w-[15%]">Responsável</div>
-        <div className="w-[20%] flex items-center gap-1 group cursor-pointer hover:text-gray-300 transition-colors">
-          Vencimento <ArrowUp className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div className="flex-1 flex flex-col h-full bg-[#1a1a1f] overflow-hidden">
+      {/* Sticky Column Headers */}
+      <div className="sticky top-0 z-20 bg-[#1a1a1f] border-b border-[#2e2e35] flex items-center text-xs font-medium text-gray-500 select-none">
+        <div className="w-8 flex-shrink-0" />
+        <div className="flex-1 min-w-[280px] px-4 py-2.5 flex items-center gap-1">
+          Nome
         </div>
-        <div className="w-[15%]">Prioridade</div>
-        <div className="w-[10%] flex justify-center">
-          <Plus className="w-4 h-4 cursor-pointer hover:text-white transition-colors" />
-        </div>
+        <div className="w-[120px] px-2 py-2.5 flex-shrink-0">Responsável</div>
+        <div className="w-[130px] px-2 py-2.5 flex-shrink-0">Vencimento</div>
+        <div className="w-[110px] px-2 py-2.5 flex-shrink-0">Prioridade</div>
+        <div className="w-[120px] px-2 py-2.5 flex-shrink-0">Status</div>
+        <div className="w-[80px] px-2 py-2.5 flex-shrink-0 text-center">Coment.</div>
+        <div className="w-10 flex-shrink-0" />
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-8 pb-12 pt-4 min-w-[800px]">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Filter indicator */}
         {isFiltering && (
-          <div className="mb-6 px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center gap-3 text-sm text-primary/90 font-medium">
-            <span>Mostrando {filteredTasks.length} de {tasks.length} tarefas</span>
-            {searchQuery && <span className="bg-primary/20 px-2 py-1 rounded-md text-xs">Busca: "{searchQuery}"</span>}
-            {filterPriority && <span className="bg-primary/20 px-2 py-1 rounded-md text-xs">Prioridade: {filterPriority}</span>}
+          <div className="mx-4 mt-3 mb-1 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg flex items-center gap-2 text-xs text-primary font-medium">
+            Mostrando {filteredTasks.length} de {tasks.length} tarefas
+            {searchQuery && <span className="bg-primary/20 px-2 py-0.5 rounded">Busca: "{searchQuery}"</span>}
+            {filterPriority && <span className="bg-primary/20 px-2 py-0.5 rounded">Prioridade: {filterPriority}</span>}
           </div>
         )}
 
-        <div className="space-y-8">
+        <div className="pb-12">
           {groups.map((group: any) => {
-            const groupTasks = groupBy === 'assignee' 
+            let groupTasks = groupBy === 'assignee'
               ? filteredTasks.filter(t => group.id === 'unassigned' ? t.assignees.length === 0 : t.assignees.includes(group.id))
               : filteredTasks.filter(t => t.statusId === group.id);
-              
-            const isCollapsed = collapsedStatuses.has(group.id);
+
+            // Filter closed if showClosed=false
+            if (!showClosed && closedStatusIds.includes(group.id)) return null;
+
             if (isFiltering && groupTasks.length === 0) return null;
-            const isDragOver = dragOverId === group.id;
+
+            const isCollapsed = collapsedGroups.has(group.id);
+            const isDragOver = dragOverGroupId === group.id;
 
             return (
-              <div 
-                key={group.id} 
-                className={`flex flex-col transition-all duration-200 rounded-xl ${isDragOver ? 'bg-white/5 ring-1 ring-primary/40 p-2 -mx-2' : ''}`}
+              <div
+                key={group.id}
+                className={`transition-all ${isDragOver ? 'bg-primary/5' : ''}`}
                 onDragOver={(e) => handleDragOver(e, group.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={() => handleDrop(group.id)}
               >
-                {/* Status Header */}
-                <div
-                  className="flex items-center gap-3 mb-2 group cursor-pointer sticky top-12 bg-[#0a0a0a] py-2 z-10 w-max"
-                  onClick={() => toggleCollapse(group.id)}
-                >
-                  <div className="p-1 rounded hover:bg-white/5 transition-colors text-gray-500 hover:text-white">
-                    {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {/* Group Header — ClickUp Style */}
+                <div className="flex items-center gap-1 px-3 py-2 sticky top-[37px] bg-[#1a1a1f] z-10 border-b border-[#2e2e35]/50 group/header">
+                  <button
+                    onClick={() => toggleCollapse(group.id)}
+                    className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {isCollapsed
+                      ? <ChevronRight className="w-3.5 h-3.5" />
+                      : <ChevronDown className="w-3.5 h-3.5" />
+                    }
+                  </button>
+
+                  {/* Status Icon */}
+                  <div
+                    className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                    style={{ borderColor: group.color }}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: group.color }} />
                   </div>
-                  
-                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-white/5 shadow-sm" style={{ backgroundColor: group.color + '15' }}>
-                    {groupBy === 'assignee' && group.avatar ? (
-                      <img src={group.avatar} className="w-4 h-4 rounded-full border border-white/10" alt="Avatar" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ color: group.color, backgroundColor: group.color }} />
-                    )}
-                    <span className="text-xs font-bold tracking-wide" style={{ color: group.color }}>{group.name}</span>
-                  </div>
-                  
-                  <span className="text-xs text-gray-500 font-medium ml-1">{groupTasks.length}</span>
-                  
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center ml-2 transition-opacity">
-                    {groupBy === 'status' && (
-                      <button
-                        className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); setAddingToStatus(group.id); if(isCollapsed) toggleCollapse(group.id); }}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+
+                  <span className="text-[11px] font-bold uppercase tracking-wider ml-0.5" style={{ color: group.color }}>
+                    {group.name}
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium ml-1.5">{groupTasks.length}</span>
+
+                  {/* Add Task inline from header */}
+                  {groupBy === 'status' && (
+                    <button
+                      className="ml-2 opacity-0 group-hover/header:opacity-100 p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-gray-200 transition-all"
+                      onClick={() => { setAddingToStatus(group.id); if(isCollapsed) toggleCollapse(group.id); }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
-                {/* Tasks List */}
+                {/* Tasks */}
                 <AnimatePresence initial={false}>
                   {!isCollapsed && (
                     <motion.div
-                      key={`tasks-${group.id}`}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex flex-col border-l-2 ml-2 pl-4 overflow-hidden"
-                      style={{ borderColor: group.color + '30' }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
                     >
                       {groupTasks.map(task => (
-                        <div
+                        <TaskRow
                           key={task.id}
-                          draggable
+                          task={task}
+                          taskStatuses={taskStatuses}
+                          editingTaskId={editingTaskId}
+                          editingName={editingName}
+                          setEditingName={setEditingName}
+                          openMenuId={openMenuId}
+                          moveMenuTaskId={moveMenuTaskId}
+                          openPriorityId={openPriorityId}
+                          openStatusId={openStatusId}
+                          openAssigneeId={openAssigneeId}
+                          openDateId={openDateId}
+                          menuRef={menuRef}
+                          onOpenTask={() => setSelectedTask(task)}
+                          onStartEditName={() => handleStartEditName(task)}
+                          onSaveEditName={() => handleSaveEditName(task.id)}
+                          onUpdateTask={(updates) => updateTask(task.id, updates)}
+                          onDeleteTask={() => handleDeleteTask(task.id, task.name)}
+                          onDuplicateTask={() => handleDuplicateTask(task)}
+                          onMoveTask={(newStatusId) => handleMoveTask(task.id, newStatusId)}
+                          onToggleMenu={() => { setOpenMenuId(openMenuId === task.id ? null : task.id); setMoveMenuTaskId(null); }}
+                          onToggleMoveMenu={() => setMoveMenuTaskId(moveMenuTaskId === task.id ? null : task.id)}
+                          onTogglePriority={() => setOpenPriorityId(openPriorityId === task.id ? null : task.id)}
+                          onToggleStatus={() => setOpenStatusId(openStatusId === task.id ? null : task.id)}
+                          onToggleAssignee={() => setOpenAssigneeId(openAssigneeId === task.id ? null : task.id)}
+                          onToggleDate={() => setOpenDateId(openDateId === task.id ? null : task.id)}
                           onDragStart={() => handleDragStart(task.id)}
-                          onMouseEnter={() => setHoveredTaskId(task.id)}
-                          onMouseLeave={() => setHoveredTaskId(null)}
-                          className={`flex items-center py-2.5 border-b border-white/[0.03] hover:bg-white/[0.02] group/row -ml-4 pl-4 pr-2 transition-all relative cursor-grab active:cursor-grabbing
-                            ${hoveredTaskId === task.id ? 'bg-white/[0.02]' : ''}
-                          `}
-                        >
-                          {/* Drag Handle Indicator */}
-                          <div className={`absolute left-0 w-4 h-full flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity -ml-3`}>
-                             <GripVertical className="w-3.5 h-3.5 text-gray-600" />
-                          </div>
-
-                          <div className="w-[40%] flex items-center gap-3">
-                            {/* Checkbox Linear Style */}
-                            <div
-                              className="w-4 h-4 rounded-[4px] border border-gray-600 flex-shrink-0 cursor-pointer hover:border-white transition-colors flex items-center justify-center group/status"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const currentIndex = taskStatuses.findIndex(s => s.id === task.statusId);
-                                const nextStatus = taskStatuses[(currentIndex + 1) % taskStatuses.length];
-                                updateTask(task.id, { statusId: nextStatus.id });
-                              }}
-                            >
-                               <CheckCircle2 className="w-3 h-3 opacity-0 group-hover/status:opacity-100 text-gray-400" />
-                            </div>
-
-                            {editingTask?.id === task.id && editingTask?.field === 'name' ? (
-                              <input
-                                type="text"
-                                autoFocus
-                                defaultValue={task.name}
-                                onBlur={(e) => handleUpdateTask(task.id, 'name', e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleUpdateTask(task.id, 'name', e.currentTarget.value);
-                                  if (e.key === 'Escape') setEditingTask(null);
-                                }}
-                                className="bg-primary/10 border border-primary/50 outline-none text-[13px] text-white w-full h-7 font-medium px-2 rounded-md shadow-[0_0_0_2px_rgba(59,130,246,0.1)] transition-all"
-                              />
-                            ) : (
-                              <span
-                                className="text-[13px] text-gray-200 font-medium cursor-pointer hover:text-white transition-colors truncate flex-1"
-                                onClick={() => setSelectedTask(task)}
-                              >
-                                {task.name}
-                              </span>
-                            )}
-                            
-                            <div className="flex items-center gap-2">
-                              {task.subtasks && task.subtasks.length > 0 && (
-                                <span className="text-[10px] text-gray-400 bg-white/5 px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-white/5">
-                                  <ListTodo className="w-3 h-3 text-gray-500" />
-                                  {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
-                                </span>
-                              )}
-                              {task.isTimerRunning && (
-                                <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
-                                  <Clock className="w-3 h-3" />
-                                  Gravando
-                                </span>
-                              )}
-                              {task.tags?.slice(0, 2).map(tag => (
-                                <span
-                                  key={tag.name}
-                                  className="px-1.5 py-0.5 text-[9px] font-bold tracking-wide rounded border"
-                                  style={{ color: tag.color, backgroundColor: tag.bgColor, borderColor: tag.color + '40' }}
-                                >
-                                  {tag.name}
-                                </span>
-                              ))}
-                              {task.tags && task.tags.length > 2 && (
-                                <span className="px-1 py-0.5 text-[9px] text-gray-500 bg-white/5 rounded">+{task.tags.length - 2}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="w-[15%] flex items-center">
-                            {task.assignees.map((avatar, i) => (
-                              <img key={i} src={avatar} alt="Assignee" className="w-6 h-6 rounded-full border-2 border-[#0a0a0a] cursor-pointer hover:scale-110 transition-transform -ml-1 first:ml-0 shadow-sm" />
-                            ))}
-                            {hoveredTaskId === task.id && (
-                               <div className="w-6 h-6 rounded-full border border-dashed border-gray-600 flex items-center justify-center -ml-1 bg-[#0a0a0a] cursor-pointer hover:border-white transition-colors hover:text-white text-gray-500">
-                                  <Plus className="w-3 h-3" />
-                               </div>
-                            )}
-                          </div>
-
-                          <div className="w-[20%] flex items-center text-[12px] font-medium">
-                            {editingTask?.id === task.id && editingTask?.field === 'dueDate' ? (
-                              <input
-                                type="text"
-                                autoFocus
-                                defaultValue={task.dueDate}
-                                onBlur={(e) => handleUpdateTask(task.id, 'dueDate', e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleUpdateTask(task.id, 'dueDate', e.currentTarget.value);
-                                  if (e.key === 'Escape') setEditingTask(null);
-                                }}
-                                placeholder="Ex: Amanhã"
-                                className="bg-primary/10 border border-primary/50 text-white rounded-md px-2 py-1 outline-none text-[12px] w-28 font-medium shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
-                              />
-                            ) : (
-                              <div
-                                className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors w-full py-1"
-                                onClick={() => setEditingTask({ id: task.id, field: 'dueDate' })}
-                              >
-                                {task.dueDate ? (
-                                  <span className={`px-2 py-0.5 rounded-md ${task.dueDate.includes('atrás') ? 'text-red-400 bg-red-500/10 border border-red-500/20' : 'text-gray-400 hover:bg-white/5'}`}>{task.dueDate}</span>
-                                ) : (
-                                  <span className="text-gray-600 opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center gap-1 border border-dashed border-gray-700 px-2 py-0.5 rounded-md hover:border-gray-500 hover:text-gray-400">
-                                    <CalendarIcon className="w-3 h-3" /> Setar data
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="w-[15%] flex items-center relative">
-                            {editingTask?.id === task.id && editingTask?.field === 'priority' ? (
-                              <select
-                                autoFocus
-                                defaultValue={task.priority}
-                                onBlur={(e) => handleUpdateTask(task.id, 'priority', e.target.value)}
-                                onChange={(e) => handleUpdateTask(task.id, 'priority', e.target.value)}
-                                className="bg-primary/10 border border-primary/50 rounded-md px-2 py-1 outline-none text-xs text-white w-28 appearance-none shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
-                              >
-                                <option value="Urgent">Urgente</option>
-                                <option value="High">Alta</option>
-                                <option value="Normal">Normal</option>
-                                <option value="Low">Baixa</option>
-                                <option value="None">Nenhuma</option>
-                              </select>
-                            ) : (
-                              <div
-                                className="cursor-pointer py-1 px-2 rounded-md hover:bg-white/5 transition-colors"
-                                onClick={() => setEditingTask({ id: task.id, field: 'priority' })}
-                              >
-                                <PriorityIcon priority={task.priority} />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Context Menu */}
-                          <div className="w-[10%] flex justify-center relative" ref={openMenuId === task.id ? menuRef : undefined}>
-                            <button
-                              className={`transition-opacity p-1.5 rounded-md hover:bg-white/10 hover:text-white ${openMenuId === task.id ? 'opacity-100 text-white bg-white/10' : 'opacity-0 text-gray-500 group-hover/row:opacity-100'}`}
-                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === task.id ? null : task.id); setMoveMenuTaskId(null); }}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
-
-                            <AnimatePresence>
-                              {openMenuId === task.id && (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                                  transition={{ duration: 0.15 }}
-                                  className="absolute right-8 top-0 mt-1 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 w-48 py-1.5 overflow-hidden backdrop-blur-xl"
-                                >
-                                  <button
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
-                                    onClick={() => { setEditingTask({ id: task.id, field: 'name' }); setOpenMenuId(null); }}
-                                  >
-                                    <Edit3 className="w-4 h-4 text-gray-500" /> Renomear
-                                  </button>
-                                  <button
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
-                                    onClick={() => handleDuplicateTask(task)}
-                                  >
-                                    <Copy className="w-4 h-4 text-gray-500" /> Duplicar
-                                  </button>
-                                  <button
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
-                                    onClick={() => setMoveMenuTaskId(moveMenuTaskId === task.id ? null : task.id)}
-                                  >
-                                    <ArrowRightLeft className="w-4 h-4 text-gray-500" /> Mover para...
-                                  </button>
-
-                                  {/* Move submenu */}
-                                  <AnimatePresence>
-                                    {moveMenuTaskId === task.id && (
-                                      <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="overflow-hidden border-t border-white/5 bg-black/20"
-                                      >
-                                        {taskStatuses.filter(s => s.id !== task.statusId).map(s => (
-                                          <button
-                                            key={s.id}
-                                            className="w-full flex items-center gap-3 px-6 py-2 text-xs font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
-                                            onClick={() => handleMoveTask(task.id, s.id)}
-                                          >
-                                            <div className="w-2 h-2 rounded-full shadow-[0_0_5px_currentColor]" style={{ color: s.color, backgroundColor: s.color }} />
-                                            {s.name}
-                                          </button>
-                                        ))}
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-
-                                  <div className="border-t border-white/5 my-1" />
-                                  <button
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-medium text-red-400 hover:bg-red-500/10 transition-colors"
-                                    onClick={() => handleDeleteTask(task.id, task.name)}
-                                  >
-                                    <Trash2 className="w-4 h-4" /> Deletar
-                                  </button>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        </div>
+                          closeAllDropdowns={() => {
+                            setOpenMenuId(null); setMoveMenuTaskId(null);
+                            setOpenPriorityId(null); setOpenStatusId(null);
+                            setOpenAssigneeId(null); setOpenDateId(null);
+                          }}
+                        />
                       ))}
 
                       {/* Add Task Input */}
-                      {addingToStatus === group.id && (
-                        <div className="flex items-center py-2.5 border-b border-white/[0.03] -ml-4 pl-4 pr-2 bg-white/[0.01]">
-                          <div className="w-[40%] flex items-center gap-3">
-                            <div className="w-4 h-4 rounded-[4px] border border-gray-700 flex-shrink-0" />
-                            <input
-                              type="text"
-                              autoFocus
-                              value={newTaskName}
-                              onChange={(e) => setNewTaskName(e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, group.id)}
-                              onBlur={() => { if(newTaskName.trim()) handleAddTask(group.id); else setAddingToStatus(null); }}
-                              placeholder="Nome da tarefa... (Enter para salvar)"
-                              className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder-gray-600 font-medium"
-                            />
-                          </div>
+                      {addingToStatus === group.id ? (
+                        <div className="flex items-center border-b border-[#2e2e35] bg-[#1e1e25] px-3 py-2 gap-2">
+                          <div className="w-5 flex-shrink-0" />
+                          <Circle className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                          <input
+                            type="text"
+                            autoFocus
+                            value={newTaskInputs[group.id] || ''}
+                            onChange={e => setNewTaskInputs(prev => ({ ...prev, [group.id]: e.target.value }))}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleAddTask(group.id); }
+                              if (e.key === 'Escape') { setAddingToStatus(null); setNewTaskInputs(prev => ({ ...prev, [group.id]: '' })); }
+                            }}
+                            onBlur={() => {
+                              if ((newTaskInputs[group.id] || '').trim()) handleAddTask(group.id);
+                              else setAddingToStatus(null);
+                            }}
+                            placeholder="Nome da tarefa"
+                            className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-gray-600"
+                          />
+                          <span className="text-xs text-gray-600">Enter para salvar • Esc para cancelar</span>
                         </div>
-                      )}
-
-                      {/* Add Task Row (Inline Button) */}
-                      {addingToStatus !== group.id && (
-                        <div
-                          className="flex items-center py-2.5 text-[13px] font-medium text-gray-500 hover:text-gray-300 cursor-pointer -ml-4 pl-4 group transition-colors hover:bg-white/[0.02]"
+                      ) : (
+                        <button
+                          className="w-full flex items-center gap-2 px-6 py-2 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.02] transition-colors border-b border-[#2e2e35]/50 group/add"
                           onClick={() => setAddingToStatus(group.id)}
                         >
-                          <Plus className="w-4 h-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400" />
-                          Adicionar tarefa...
-                        </div>
+                          <Plus className="w-3.5 h-3.5 opacity-0 group-hover/add:opacity-100 transition-opacity" />
+                          Adicionar tarefa
+                        </button>
                       )}
                     </motion.div>
                   )}
@@ -500,55 +352,49 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'statu
 
           {/* No results */}
           {isFiltering && filteredTasks.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20 text-gray-500">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-                <span className="text-2xl">🔍</span>
-              </div>
-              <div className="text-base font-bold text-gray-300">Nenhuma tarefa encontrada</div>
-              <div className="text-sm mt-1">Tente ajustar seus filtros ou busca.</div>
-            </motion.div>
+            <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+              <div className="text-4xl mb-3">🔍</div>
+              <div className="text-sm font-medium text-gray-400">Nenhuma tarefa encontrada</div>
+              <div className="text-xs mt-1">Tente ajustar seus filtros</div>
+            </div>
           )}
 
-          {/* New Status */}
+          {/* New Status button */}
           {!isFiltering && (
-            addingNewStatus ? (
-              <div className="flex items-center gap-2 mt-6">
+            <div className="px-4 pt-4">
+              {addingNewStatus ? (
                 <input
                   type="text"
                   autoFocus
                   value={newStatusName}
-                  onChange={(e) => setNewStatusName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddStatus();
-                    if (e.key === 'Escape') { setAddingNewStatus(false); setNewStatusName(''); }
-                  }}
-                  onBlur={() => handleAddStatus()}
-                  placeholder="Nome do novo status..."
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none text-sm text-white placeholder-gray-600 w-64 focus:border-primary/50 transition-colors shadow-sm"
+                  onChange={e => setNewStatusName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddStatus(); if (e.key === 'Escape') { setAddingNewStatus(false); setNewStatusName(''); } }}
+                  onBlur={handleAddStatus}
+                  placeholder="Nome do status..."
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none text-sm text-white placeholder-gray-600 w-56 focus:border-primary/50"
                 />
-              </div>
-            ) : (
-              <div
-                className="flex items-center py-2 text-sm font-medium text-gray-500 hover:text-white cursor-pointer transition-colors mt-6 w-max px-2 hover:bg-white/5 rounded-md"
-                onClick={() => setAddingNewStatus(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Novo status
-              </div>
-            )
+              ) : (
+                <button
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors px-1 py-1 rounded hover:bg-white/5"
+                  onClick={() => setAddingNewStatus(true)}
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo status
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
 
       <ToastContainer />
 
-      {/* Task Modal */}
       {selectedTask && (
         <TaskModal
           task={filteredTasks.find(t => t.id === selectedTask.id) || selectedTask}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
-          onRelatedTaskClick={(taskId) => {
+          onRelatedTaskClick={taskId => {
             const rt = tasks.find(t => t.id === taskId);
             if (rt) setSelectedTask(rt);
           }}
@@ -558,19 +404,361 @@ const ListView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'statu
   );
 };
 
-const PriorityIcon = ({ priority }: { priority: string }) => {
-  switch (priority) {
-    case 'Urgent': return <div className="flex items-center gap-2 text-xs font-bold text-red-500"><Flag className="w-3.5 h-3.5 fill-red-500" /> Urgente</div>;
-    case 'High': return <div className="flex items-center gap-2 text-xs font-bold text-yellow-500"><Flag className="w-3.5 h-3.5 fill-yellow-500" /> Alta</div>;
-    case 'Normal': return <div className="flex items-center gap-2 text-xs font-bold text-blue-400"><Flag className="w-3.5 h-3.5 fill-blue-400" /> Normal</div>;
-    case 'Low': return <div className="flex items-center gap-2 text-xs font-bold text-gray-400"><Flag className="w-3.5 h-3.5 fill-gray-400" /> Baixa</div>;
-    default: return (
-       <div className="flex items-center gap-2 text-xs font-medium text-gray-600 opacity-0 group-hover/row:opacity-100 transition-opacity">
-         <Flag className="w-3.5 h-3.5 border border-dashed border-gray-600 rounded-[2px]" /> 
-         Setar
-       </div>
-    );
-  }
+// ─── TaskRow Component ────────────────────────────────────────────────────────
+interface TaskRowProps {
+  task: Task;
+  taskStatuses: any[];
+  editingTaskId: string | null;
+  editingName: string;
+  setEditingName: (v: string) => void;
+  openMenuId: string | null;
+  moveMenuTaskId: string | null;
+  openPriorityId: string | null;
+  openStatusId: string | null;
+  openAssigneeId: string | null;
+  openDateId: string | null;
+  menuRef: React.RefObject<HTMLDivElement>;
+  onOpenTask: () => void;
+  onStartEditName: () => void;
+  onSaveEditName: () => void;
+  onUpdateTask: (updates: Partial<Task>) => void;
+  onDeleteTask: () => void;
+  onDuplicateTask: () => void;
+  onMoveTask: (statusId: string) => void;
+  onToggleMenu: () => void;
+  onToggleMoveMenu: () => void;
+  onTogglePriority: () => void;
+  onToggleStatus: () => void;
+  onToggleAssignee: () => void;
+  onToggleDate: () => void;
+  onDragStart: () => void;
+  closeAllDropdowns: () => void;
+}
+
+const TaskRow = ({
+  task, taskStatuses, editingTaskId, editingName, setEditingName,
+  openMenuId, moveMenuTaskId, openPriorityId, openStatusId, openAssigneeId, openDateId,
+  menuRef, onOpenTask, onStartEditName, onSaveEditName, onUpdateTask,
+  onDeleteTask, onDuplicateTask, onMoveTask, onToggleMenu, onToggleMoveMenu,
+  onTogglePriority, onToggleStatus, onToggleAssignee, onToggleDate, onDragStart, closeAllDropdowns,
+}: TaskRowProps) => {
+  const status = taskStatuses.find(s => s.id === task.statusId);
+  const prio = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.None;
+  const isEditing = editingTaskId === task.id;
+  const overdue = isOverdue(task.dueDate);
+  const dateLabel = formatDate(task.dueDate);
+  const isMenuOpen = openMenuId === task.id;
+  const isPriorityOpen = openPriorityId === task.id;
+  const isStatusOpen = openStatusId === task.id;
+  const isAssigneeOpen = openAssigneeId === task.id;
+  const isDateOpen = openDateId === task.id;
+
+  const nextStatus = () => {
+    const idx = taskStatuses.findIndex(s => s.id === task.statusId);
+    const next = taskStatuses[(idx + 1) % taskStatuses.length];
+    onUpdateTask({ statusId: next.id });
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      className="flex items-center border-b border-[#2e2e35]/60 hover:bg-white/[0.02] group/row transition-colors cursor-default relative"
+      style={{ minHeight: '37px' }}
+    >
+      {/* Drag handle (hidden until hover) */}
+      <div className="w-8 flex-shrink-0 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+        <GripVertical className="w-3.5 h-3.5 text-gray-600 cursor-grab" />
+      </div>
+
+      {/* Status Circle */}
+      <div
+        className="flex-shrink-0 w-4 h-4 rounded-full border-2 cursor-pointer hover:scale-110 transition-transform flex items-center justify-center mr-2"
+        style={{ borderColor: status?.color || '#555' }}
+        onClick={nextStatus}
+        title={`Status: ${status?.name} — clique para avançar`}
+      >
+        <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/row:opacity-60" style={{ color: status?.color }} />
+      </div>
+
+      {/* Name */}
+      <div className="flex-1 min-w-[200px] pr-2 flex items-center gap-2 py-2">
+        {isEditing ? (
+          <input
+            type="text"
+            autoFocus
+            value={editingName}
+            onChange={e => setEditingName(e.target.value)}
+            onBlur={onSaveEditName}
+            onKeyDown={e => { if (e.key === 'Enter') onSaveEditName(); if (e.key === 'Escape') { setEditingName(task.name); onSaveEditName(); } }}
+            className="flex-1 bg-[#111] border border-primary/50 rounded px-2 py-0.5 text-sm text-white outline-none ring-1 ring-primary/20"
+          />
+        ) : (
+          <span
+            className="text-[13px] text-gray-200 font-medium cursor-pointer hover:text-white hover:underline decoration-dotted underline-offset-2 transition-colors truncate"
+            onClick={onOpenTask}
+            onDoubleClick={onStartEditName}
+            title={task.name}
+          >
+            {task.name}
+          </span>
+        )}
+
+        {/* Badges */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {task.subtasks && task.subtasks.length > 0 && (
+            <span className="text-[10px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded flex items-center gap-1 border border-white/5">
+              <ListTodo className="w-3 h-3" />
+              {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+            </span>
+          )}
+          {task.isTimerRunning && (
+            <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 animate-pulse">
+              <Clock className="w-3 h-3" /> Gravando
+            </span>
+          )}
+          {task.tags?.slice(0, 2).map(tag => (
+            <span key={tag.name} className="px-1.5 py-0.5 text-[9px] font-bold tracking-wide rounded border"
+              style={{ color: tag.color, backgroundColor: tag.bgColor, borderColor: tag.color + '40' }}>
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Assignee */}
+      <div className="w-[120px] flex-shrink-0 px-2 relative" data-dropdown>
+        <div
+          className="flex items-center gap-1 cursor-pointer"
+          onClick={onToggleAssignee}
+        >
+          {task.assignees.length > 0 ? (
+            <>
+              {task.assignees.slice(0, 3).map((av, i) => (
+                <img key={i} src={av} alt="Assignee"
+                  className="w-5 h-5 rounded-full border border-[#1a1a1f] -ml-1 first:ml-0 hover:scale-110 transition-transform" />
+              ))}
+              {task.assignees.length > 3 && (
+                <span className="text-[10px] text-gray-400 bg-white/10 rounded-full w-5 h-5 flex items-center justify-center -ml-1">
+                  +{task.assignees.length - 3}
+                </span>
+              )}
+            </>
+          ) : (
+            <div className="opacity-0 group-hover/row:opacity-100 transition-opacity w-5 h-5 rounded-full border border-dashed border-gray-600 flex items-center justify-center text-gray-600">
+              <User className="w-3 h-3" />
+            </div>
+          )}
+        </div>
+        <AnimatePresence>
+          {isAssigneeOpen && (
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute left-0 top-full mt-1 bg-[#1e1e2a] border border-white/10 rounded-xl shadow-2xl z-50 w-48 py-1.5 backdrop-blur"
+              data-dropdown
+            >
+              <div className="px-3 py-1 text-[10px] text-gray-500 font-bold uppercase tracking-wide">Responsáveis</div>
+              {SYSTEM_USERS.map(user => {
+                const assigned = task.assignees.includes(user.avatar);
+                return (
+                  <button key={user.id}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition-colors ${assigned ? 'text-white bg-primary/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
+                    onClick={() => {
+                      const newAssignees = assigned
+                        ? task.assignees.filter(a => a !== user.avatar)
+                        : [...task.assignees, user.avatar];
+                      onUpdateTask({ assignees: newAssignees });
+                    }}
+                  >
+                    <img src={user.avatar} className="w-6 h-6 rounded-full" />
+                    <span>{user.name}</span>
+                    {assigned && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Due Date */}
+      <div className="w-[130px] flex-shrink-0 px-2 relative" data-dropdown>
+        <div
+          className={`flex items-center gap-1.5 cursor-pointer text-xs font-medium py-1 px-2 rounded transition-colors ${
+            overdue ? 'text-red-400 bg-red-500/10' : dateLabel ? 'text-gray-300 hover:bg-white/5' : 'opacity-0 group-hover/row:opacity-100 text-gray-600 hover:text-gray-400'
+          }`}
+          onClick={onToggleDate}
+        >
+          <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
+          {dateLabel || <span className="text-gray-600">Setar data</span>}
+        </div>
+        <AnimatePresence>
+          {isDateOpen && (
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute left-0 top-full mt-1 bg-[#1e1e2a] border border-white/10 rounded-xl shadow-2xl z-50 p-3 backdrop-blur"
+              data-dropdown
+            >
+              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-2">Data de Vencimento</div>
+              <input
+                type="date"
+                value={task.dueDate && !isNaN(new Date(task.dueDate).getTime()) ? task.dueDate : ''}
+                onChange={e => {
+                  onUpdateTask({ dueDate: e.target.value || undefined });
+                  onToggleDate();
+                }}
+                className="bg-[#111] border border-white/10 text-white text-sm rounded-lg px-2 py-1.5 outline-none focus:border-primary/50 w-full"
+              />
+              {task.dueDate && (
+                <button className="mt-2 w-full text-xs text-red-400 hover:text-red-300 transition-colors py-1"
+                  onClick={() => { onUpdateTask({ dueDate: undefined }); onToggleDate(); }}>
+                  Remover data
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Priority */}
+      <div className="w-[110px] flex-shrink-0 px-2 relative" data-dropdown>
+        <div
+          className="flex items-center gap-1.5 cursor-pointer group/prio py-1 px-2 rounded hover:bg-white/5 transition-colors"
+          onClick={onTogglePriority}
+        >
+          <Flag
+            className="w-3.5 h-3.5 flex-shrink-0 transition-colors"
+            style={{ color: prio.flag, fill: task.priority !== 'None' ? prio.flag : 'none' }}
+          />
+          {task.priority !== 'None' && (
+            <span className="text-xs font-medium" style={{ color: prio.color }}>{prio.label}</span>
+          )}
+          {task.priority === 'None' && (
+            <span className="text-xs text-gray-600 opacity-0 group-hover/row:opacity-100 transition-opacity">Setar</span>
+          )}
+        </div>
+        <AnimatePresence>
+          {isPriorityOpen && (
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute left-0 top-full mt-1 bg-[#1e1e2a] border border-white/10 rounded-xl shadow-2xl z-50 w-40 py-1.5 backdrop-blur"
+              data-dropdown
+            >
+              <div className="px-3 py-1 text-[10px] text-gray-500 font-bold uppercase tracking-wide">Prioridade</div>
+              {Object.entries(PRIORITY_CONFIG).map(([key, val]) => (
+                <button key={key}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition-colors ${task.priority === key ? 'text-white bg-white/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
+                  onClick={() => { onUpdateTask({ priority: key as any }); onTogglePriority(); }}
+                >
+                  <Flag className="w-3.5 h-3.5" style={{ color: val.flag, fill: key !== 'None' ? val.flag : 'none' }} />
+                  {key === 'None' ? 'Nenhuma' : val.label}
+                  {task.priority === key && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Status */}
+      <div className="w-[120px] flex-shrink-0 px-2 relative" data-dropdown>
+        <div
+          className="inline-flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded-md text-[11px] font-bold border border-transparent hover:border-white/10 transition-all"
+          style={{ backgroundColor: (status?.color || '#555') + '20', color: status?.color || '#888' }}
+          onClick={onToggleStatus}
+        >
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: status?.color }} />
+          <span className="truncate max-w-[80px]">{status?.name || 'Sem Status'}</span>
+        </div>
+        <AnimatePresence>
+          {isStatusOpen && (
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute left-0 top-full mt-1 bg-[#1e1e2a] border border-white/10 rounded-xl shadow-2xl z-50 w-44 py-1.5 backdrop-blur"
+              data-dropdown
+            >
+              <div className="px-3 py-1 text-[10px] text-gray-500 font-bold uppercase tracking-wide">Status</div>
+              {taskStatuses.map(s => (
+                <button key={s.id}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition-colors ${task.statusId === s.id ? 'text-white bg-white/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
+                  onClick={() => { onUpdateTask({ statusId: s.id }); onToggleStatus(); }}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                  {s.name}
+                  {task.statusId === s.id && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Comments */}
+      <div className="w-[80px] flex-shrink-0 px-2 flex items-center justify-center">
+        <button
+          className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-300 transition-colors py-1 px-2 rounded hover:bg-white/5"
+          onClick={onOpenTask}
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          {task.comments && task.comments.length > 0 && (
+            <span className="font-medium">{task.comments.length}</span>
+          )}
+        </button>
+      </div>
+
+      {/* Context Menu */}
+      <div className="w-10 flex-shrink-0 flex items-center justify-center relative"
+        ref={isMenuOpen ? menuRef : undefined}
+      >
+        <button
+          className={`p-1.5 rounded transition-all ${isMenuOpen ? 'opacity-100 bg-white/10 text-white' : 'opacity-0 group-hover/row:opacity-100 text-gray-500 hover:text-white hover:bg-white/10'}`}
+          onClick={e => { e.stopPropagation(); onToggleMenu(); }}
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.12 }}
+              className="absolute right-8 top-0 bg-[#1e1e2a] border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 w-48 py-1.5 backdrop-blur-xl overflow-hidden"
+            >
+              <button className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+                onClick={() => { onStartEditName(); onToggleMenu(); }}>
+                <Edit3 className="w-3.5 h-3.5 text-gray-500" /> Renomear
+              </button>
+              <button className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+                onClick={onDuplicateTask}>
+                <Copy className="w-3.5 h-3.5 text-gray-500" /> Duplicar
+              </button>
+              <button className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+                onClick={onToggleMoveMenu}>
+                <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500" /> Mover para...
+              </button>
+              <AnimatePresence>
+                {moveMenuTaskId === task.id && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden bg-black/20 border-t border-white/5"
+                  >
+                    {taskStatuses.filter(s => s.id !== task.statusId).map(s => (
+                      <button key={s.id} className="w-full flex items-center gap-3 px-6 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                        onClick={() => onMoveTask(s.id)}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                        {s.name}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <div className="border-t border-white/5 my-1" />
+              <button className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/10 transition-colors"
+                onClick={onDeleteTask}>
+                <Trash2 className="w-3.5 h-3.5" /> Deletar
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 };
 
 export default ListView;

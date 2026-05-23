@@ -236,13 +236,13 @@ const RhCatalogo = () => {
                       showToast('Perfil removido.');
                     }
                   }}
-                  className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all border border-transparent hover:border-red-500/30"
+                  className="absolute top-4 right-4 p-2 bg-[#1a1a1a] hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded-lg transition-all border border-white/5 hover:border-red-500/30"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setEditingProfile(member)}
-                  className="absolute top-4 right-14 p-2 bg-black/50 hover:bg-blue-500/20 text-gray-500 hover:text-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all border border-transparent hover:border-blue-500/30"
+                  className="absolute top-4 right-14 p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
                   title="Editar Colaborador"
                 >
                   <Edit2 className="w-4 h-4" />

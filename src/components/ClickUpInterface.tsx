@@ -25,7 +25,8 @@ const ClickUpInterface = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<'status' | 'assignee'>('status');
-  
+  const [showClosed, setShowClosed] = useState(true);
+
   // Task Modal State
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -106,42 +107,51 @@ const ClickUpInterface = () => {
           onFilterChange={setFilterPriority}
           groupBy={groupBy}
           onGroupByChange={setGroupBy}
+          showClosed={showClosed}
+          onToggleClosed={() => setShowClosed(v => !v)}
         />
-        <div className="flex-1 overflow-auto custom-scrollbar relative">
-          {currentView === 'overview' && <Overview />}
-          {currentView === 'task-dashboard' && <TaskDashboard />}
+        <div className="flex-1 overflow-hidden relative flex flex-col">
+          {currentView === 'overview' && <div className="flex-1 overflow-auto custom-scrollbar"><Overview /></div>}
+          {currentView === 'task-dashboard' && <div className="flex-1 overflow-auto custom-scrollbar"><TaskDashboard /></div>}
           {currentView === 'tasks' && (
             <ListView
               filteredTasks={filteredTasks}
               searchQuery={searchQuery}
               filterPriority={filterPriority}
               groupBy={groupBy}
+              showClosed={showClosed}
             />
           )}
           {(currentView === 'clients' || currentView === 'client-database') && (
-            <ClientList 
-              filteredClients={filteredClients} 
-              searchQuery={searchQuery}
-              onOpenAddModal={handleAddItem}
-            />
+            <div className="flex-1 overflow-auto custom-scrollbar">
+              <ClientList 
+                filteredClients={filteredClients} 
+                searchQuery={searchQuery}
+                onOpenAddModal={handleAddItem}
+              />
+            </div>
           )}
           {currentView === 'client-board' && (
-             <ClientBoardView
-               filteredClients={filteredClients}
-               searchQuery={searchQuery}
-               onOpenAddModal={handleAddItem}
-             />
+            <div className="flex-1 overflow-auto custom-scrollbar">
+              <ClientBoardView
+                filteredClients={filteredClients}
+                searchQuery={searchQuery}
+                onOpenAddModal={handleAddItem}
+              />
+            </div>
           )}
           {currentView === 'board' && (
-            <BoardView
-              filteredTasks={filteredTasks}
-              searchQuery={searchQuery}
-              filterPriority={filterPriority}
-              groupBy={groupBy}
-            />
+            <div className="flex-1 overflow-auto custom-scrollbar">
+              <BoardView
+                filteredTasks={filteredTasks}
+                searchQuery={searchQuery}
+                filterPriority={filterPriority}
+                groupBy={groupBy}
+              />
+            </div>
           )}
-          {currentView === 'calendar' && <CalendarView />}
-          {currentView === 'dna-clientes' && <DNAClientes />}
+          {currentView === 'calendar' && <div className="flex-1 overflow-auto custom-scrollbar"><CalendarView /></div>}
+          {currentView === 'dna-clientes' && <div className="flex-1 overflow-auto custom-scrollbar"><DNAClientes /></div>}
         </div>
       </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}

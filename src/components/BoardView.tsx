@@ -185,7 +185,7 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'stat
                          )}
                          <div className="flex items-center gap-1 hover:text-gray-300 transition-colors">
                            <MessageSquare className="w-3.5 h-3.5" />
-                           <span className="font-medium">{Math.floor(Math.random() * 5)}</span> {/* Mocked comments count */}
+                           <span className="font-medium">{task.comments?.length ?? 0}</span>
                          </div>
                          {task.dueDate && (
                            <div className={`flex items-center gap-1 ml-auto font-medium px-2 py-0.5 rounded-md ${

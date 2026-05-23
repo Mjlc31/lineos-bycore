@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   CheckSquare,
@@ -11,9 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  Shield,
   UserCog,
 } from 'lucide-react';
+import { AccountSettingsModal } from './AccountSettingsModal';
 import { motion, AnimatePresence } from 'motion/react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import LineLogo from './LineLogo';
@@ -49,7 +49,8 @@ const navItems = [
 
 const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
   const [isExpanded, setIsExpanded] = useLocalStorage('lineos-sidebar-expanded', true);
-  const { profile } = useAuth();
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const { profile, signOut } = useAuth();
   // Mostra o item Usuários para role ADMIN. Usa localStorage como fallback enquanto
   // o perfil do Supabase ainda está carregando (evita flash de item ausente).
   const cachedRole = typeof window !== 'undefined' ? localStorage.getItem('line_os_cached_role') : null;
@@ -252,7 +253,8 @@ const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
           </AnimatePresence>
         </button>
         <button
-          title="Configurações"
+          title="Configurações da Conta"
+          onClick={() => setShowAccountSettings(true)}
           className={`flex items-center gap-2.5 h-9 rounded-lg text-zinc-600 hover:bg-white/[0.04] hover:text-zinc-400 transition-all duration-150
             ${isExpanded ? 'px-2.5' : 'justify-center'}`}
         >
@@ -265,7 +267,26 @@ const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
             )}
           </AnimatePresence>
         </button>
+        <button
+          title="Sair"
+          onClick={() => signOut()}
+          className={`flex items-center gap-2.5 h-9 rounded-lg text-zinc-600 hover:bg-red-500/10 hover:text-red-400 transition-all duration-150
+            ${isExpanded ? 'px-2.5' : 'justify-center'}`}
+        >
+          <LogOut className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.75} />
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-[13px] font-medium">
+                Sair
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
       </div>
+
+      {showAccountSettings && (
+        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
+      )}
     </motion.aside>
   );
 };

@@ -3,6 +3,20 @@ import { LayoutDashboard, CheckCircle2, AlertCircle, Users, BarChart3, Clock, Al
 import { motion } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 
+// Helper: verifica se uma data (string ISO ou texto) está no passado
+const isOverdue = (dueDate?: string): boolean => {
+  if (!dueDate) return false;
+  // Tentar parsear como ISO date
+  const d = new Date(dueDate);
+  if (!isNaN(d.getTime())) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d < today;
+  }
+  // Fallback para textos legados como "3 dias atrás"
+  return dueDate.includes('atrás');
+};
+
 const TaskDashboard = () => {
   const { tasks, taskStatuses, clients } = useAppContext();
 
@@ -28,12 +42,12 @@ const TaskDashboard = () => {
     return [...tasks].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 6);
   }, [tasks]);
 
-  // Tarefas Atrasadas para o Alerta
-  const delayedTasks = tasks.filter(t => t.dueDate && t.dueDate.includes('atrás') && t.statusId !== 's4');
+  // Tarefas Atrasadas para o Alerta (usando comparação de data real)
+  const delayedTasks = tasks.filter(t => isOverdue(t.dueDate) && t.statusId !== 's4');
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] as const } }
   };
 
   return (
