@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronDown, ChevronRight, Calendar, Sparkles, CheckCircle2, 
   Settings, Inbox, Flag, MoreHorizontal, Plus, Circle, CalendarDays,
-  GripVertical, LayoutDashboard
+  GripVertical, LayoutDashboard, FileText, Timer, PieChart, Tag, Users, Table2, MonitorPlay
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveGridLayout, Layout } from 'react-grid-layout';
@@ -47,12 +47,11 @@ const isTaskClosed = (statusId: string, statuses: any[]) => {
   return !!s && (s.name.toUpperCase().includes('PRONTO') || s.name.toUpperCase().includes('CONCLU') || s.name.toUpperCase().includes('DONE'));
 };
 
-// Omitindo a tipagem estrita do Layout para evitar conflitos com a definição exata do @types
 const DEFAULT_LAYOUT: any[] = [
-  { i: 'assigned-to-me', x: 0, y: 0, w: 1, h: 4, minW: 1, minH: 3 },
-  { i: 'assigned-comments', x: 1, y: 0, w: 1, h: 4, minW: 1, minH: 3 },
-  { i: 'my-tasks', x: 0, y: 4, w: 1, h: 3, minW: 1, minH: 3 },
-  { i: 'calendar', x: 1, y: 4, w: 1, h: 3, minW: 1, minH: 3 },
+  { i: 'assigned-to-me', x: 0, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
+  { i: 'assigned-comments', x: 6, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
+  { i: 'my-tasks', x: 0, y: 4, w: 6, h: 3, minW: 3, minH: 3 },
+  { i: 'calendar', x: 6, y: 4, w: 6, h: 3, minW: 3, minH: 3 },
 ];
 
 const TaskDashboard = () => {
@@ -70,7 +69,7 @@ const TaskDashboard = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [layout, setLayout] = useLocalStorage<any[]>('clickup-dashboard-layout-v1', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<any[]>('clickup-dashboard-layout-v2', DEFAULT_LAYOUT);
   
   // Apenas garantindo que o layout será carregado montado corretamente no grid
   const [mounted, setMounted] = useState(false);
@@ -131,7 +130,7 @@ const TaskDashboard = () => {
   const addWidget = (widgetId: string) => {
     setLayout(prev => {
       if (prev.find(p => p.i === widgetId)) return prev;
-      return [...prev, { i: widgetId, x: 0, y: Infinity, w: 1, h: 3, minW: 1, minH: 3 }];
+      return [...prev, { i: widgetId, x: 0, y: Infinity, w: 6, h: 3, minW: 3, minH: 3 }];
     });
   };
 
@@ -428,8 +427,80 @@ const TaskDashboard = () => {
             </div>
           </WidgetCard>
         );
+      case 'custom-text':
+        return (
+          <WidgetCard id={id} title="Bloco de Texto" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <FileText className="w-10 h-10 mb-4" />
+              <p className="text-sm font-medium">Bloco de Texto Personalizado</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'sprint-velocity':
+        return (
+          <WidgetCard id={id} title="Velocidade da Sprint" actionIcon={<Settings className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <Timer className="w-10 h-10 mb-4 text-emerald-500" />
+              <p className="text-sm font-medium">Gráfico de Velocidade da Sprint</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'workload-by-status':
+        return (
+          <WidgetCard id={id} title="Tarefas por Status" actionIcon={<Settings className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <PieChart className="w-10 h-10 mb-4 text-blue-500" />
+              <p className="text-sm font-medium">Distribuição de Status</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'task-by-tag':
+        return (
+          <WidgetCard id={id} title="Tarefas por Tag" actionIcon={<Settings className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <Tag className="w-10 h-10 mb-4 text-pink-500" />
+              <p className="text-sm font-medium">Gráfico de Barras de Tags</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'workload-by-assignee':
+        return (
+          <WidgetCard id={id} title="Carga por Responsável" actionIcon={<Settings className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <Users className="w-10 h-10 mb-4 text-indigo-500" />
+              <p className="text-sm font-medium">Carga de Trabalho da Equipe</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'time-tracked':
+        return (
+          <WidgetCard id={id} title="Tempo Rastreado" actionIcon={<Settings className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <Timer className="w-10 h-10 mb-4 text-sky-500" />
+              <p className="text-sm font-medium">Relatório de Horas</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'task-table':
+        return (
+          <WidgetCard id={id} title="Tabela de Tarefas" actionIcon={<Settings className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <Table2 className="w-10 h-10 mb-4 text-slate-500" />
+              <p className="text-sm font-medium">Visualização em Tabela</p>
+            </div>
+          </WidgetCard>
+        );
+      case 'figma-embed':
+        return (
+          <WidgetCard id={id} title="Embed do Figma" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60 hover:opacity-100 transition-opacity">
+              <MonitorPlay className="w-10 h-10 mb-4 text-pink-500" />
+              <p className="text-sm font-medium">Visualizador do Figma</p>
+            </div>
+          </WidgetCard>
+        );
       default:
-        return <WidgetCard id={id} title="Desconhecido"><div className="p-4">Widget não encontrado.</div></WidgetCard>;
+        return <WidgetCard id={id} title="Desconhecido"><div className="p-4 text-gray-500">Widget "{id}" não encontrado.</div></WidgetCard>;
     }
   };
 
@@ -538,16 +609,20 @@ const TaskDashboard = () => {
               className="layout"
               layouts={{ lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }}
               breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-              cols={{ lg: 2, md: 2, sm: 1, xs: 1, xxs: 1 }}
+              cols={{ lg: 12, md: 10, sm: 6, xs: 2, xxs: 1 }}
               rowHeight={100}
               margin={[24, 24]}
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
               isResizable={true}
+              resizeHandles={['se', 'sw', 's', 'e', 'w']}
+              resizeHandle={(axis: any, ref: any) => (
+                <div ref={ref} className={`custom-resize-handle custom-resize-handle-${axis}`} />
+              )}
               isDraggable={true}
             >
               {layout.map(item => (
-                <div key={item.i} data-grid={item}>
+                <div key={item.i} data-grid={{ ...item, resizeHandles: ['se', 'sw', 's', 'e', 'w'] }}>
                   {renderWidget(item.i)}
                 </div>
               ))}

@@ -22,7 +22,7 @@ const modules = [
 ];
 
 const CommandPalette = ({ isOpen, onClose, onNavigate, activeTab }: Props) => {
-  const { leads, transactions, meetings } = useAppContext();
+  const { leads, transactions, meetings, tasks } = useAppContext();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,12 +31,14 @@ const CommandPalette = ({ isOpen, onClose, onNavigate, activeTab }: Props) => {
   const safeLeads = Array.isArray(leads) ? leads : [];
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
   const safeMeetings = Array.isArray(meetings) ? meetings : [];
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
 
   // Mapear dados para o formato de busca com tratamento de erro
   let searchItems: any[] = [...modules];
   try {
     searchItems = [
       ...modules,
+      ...safeTasks.map(t => ({ id: 'gestor' as LineOsTab, label: t?.name || 'Tarefa', description: `Em: ${t?.statusId || 'Backlog'}`, icon: CheckSquare, category: 'Tarefas' })),
       ...safeLeads.map(l => ({ id: 'crm' as LineOsTab, label: l?.title || 'Lead', description: `Lead em ${l?.columnId} • R$ ${(Number(l?.value) || 0).toLocaleString()}`, icon: Users, category: 'Leads (CRM)' })),
       ...safeTransactions.map(t => ({ id: 'financeiro' as LineOsTab, label: t?.title || 'Transação', description: `${t?.category || ''} • R$ ${Math.abs(Number(t?.amount) || 0).toLocaleString()}`, icon: DollarSign, category: 'Financeiro' })),
       ...safeMeetings.map(m => ({ id: 'agendamento' as LineOsTab, label: m?.title || 'Reunião', description: `${m?.date || ''} • ${m?.time || ''} • ${m?.client || ''}`, icon: Calendar, category: 'Agendamento' })),
@@ -96,28 +98,29 @@ const CommandPalette = ({ isOpen, onClose, onNavigate, activeTab }: Props) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[300] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-md px-4"
+          className="fixed inset-0 z-[300] flex items-start justify-center pt-[12vh] bg-black/60 backdrop-blur-xl px-4"
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -10 }}
+            initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -10 }}
-            className="w-full max-w-xl bg-[#141414] border border-white/10 rounded-2xl shadow-2xl overflow-hidden glass-panel"
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="w-full max-w-[640px] bg-[#121212]/95 border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden glass-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5 bg-white/[0.02]">
-              <Search className="w-5 h-5 text-gray-400" />
+            <div className="flex items-center gap-4 px-5 py-5 border-b border-white/[0.06] bg-gradient-to-r from-white/[0.03] to-transparent">
+              <Search className="w-6 h-6 text-gray-400" />
               <input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Pesquisar leads, transações, reuniões ou módulos..."
-                className="flex-1 bg-transparent text-base text-white placeholder-gray-500 outline-none"
+                placeholder="Pesquisar tarefas, leads, reuniões ou módulos..."
+                className="flex-1 bg-transparent text-xl font-medium text-white placeholder-gray-500 outline-none"
               />
-              <kbd className="hidden sm:inline-block text-[10px] text-gray-500 bg-white/5 border border-white/10 px-2 py-1 rounded font-mono">ESC</kbd>
+              <kbd className="hidden sm:inline-block text-[10px] text-gray-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md font-mono tracking-widest shadow-sm">ESC</kbd>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto py-2 custom-scrollbar">
@@ -143,26 +146,34 @@ const CommandPalette = ({ isOpen, onClose, onNavigate, activeTab }: Props) => {
                             key={`${item.category}-${item.label}-${globalIdx}`}
                             onClick={() => { onNavigate(item.id); onClose(); }}
                             onMouseEnter={() => setSelectedIndex(globalIdx)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${isSelected ? 'bg-white/10 border-l-2 border-red-500' : 'hover:bg-white/5 border-l-2 border-transparent'
+                            className={`w-full flex items-center gap-3.5 px-4 py-3 text-left transition-all relative outline-none ${isSelected ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'
                               }`}
                           >
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${item.category === 'Módulos' ? 'bg-gradient-to-tr from-red-600 to-orange-500 shadow-lg shadow-red-600/20' : 'bg-white/5 border border-white/10'
+                            {isSelected && (
+                              <motion.div
+                                layoutId="active-indicator"
+                                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary)]"
+                                initial={false}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              />
+                            )}
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${isSelected ? 'scale-105' : 'scale-100'} ${item.category === 'Módulos' ? 'bg-gradient-to-tr from-primary to-orange-500 shadow-lg shadow-primary/20' : 'bg-[#222] border border-[#333]'
                               }`}>
-                              <Icon className="w-4 h-4 text-white" />
+                              <Icon className="w-5 h-5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-gray-100 flex items-center gap-2">
+                              <div className="text-[15px] font-semibold text-gray-100 flex items-center gap-2">
                                 {item.label}
                                 {item.id === activeTab && item.category === 'Módulos' && (
-                                  <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md font-medium">Ativo</span>
+                                  <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-bold tracking-wide">ATIVO</span>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-500 truncate mt-0.5">{item.description}</div>
+                              <div className="text-xs text-gray-500 truncate mt-0.5 font-medium">{item.description}</div>
                             </div>
                             {isSelected && (
-                              <div className="flex items-center gap-2 text-gray-500">
-                                <span className="text-[10px] font-medium uppercase tracking-wider">Abrir</span>
-                                <ArrowRight className="w-4 h-4" />
+                              <div className="flex items-center gap-2 text-gray-400">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Abrir</span>
+                                <ArrowRight className="w-4 h-4 text-primary" />
                               </div>
                             )}
                           </button>

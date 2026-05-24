@@ -101,7 +101,7 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'comments
 export async function updateTask(id: string, patch: Partial<Task>): Promise<void> {
   if (!supabase) return;
 
-  const dbPatch: Record<string, unknown> = {};
+  const dbPatch: any = {};
   if (patch.name !== undefined)         dbPatch.name = patch.name;
   if (patch.description !== undefined)  dbPatch.description = patch.description;
   if (patch.statusId !== undefined)     dbPatch.status_id = patch.statusId;

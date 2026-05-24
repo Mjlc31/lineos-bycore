@@ -3,6 +3,7 @@
  * Responsável por: estado, Realtime, automations engine e todas as actions.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import {
   fetchTasks, createTask, updateTask, deleteTask,
@@ -11,10 +12,6 @@ import {
 import type {
   Task, Status, Automation, TaskComment, TaskAttachment,
 } from '../types';
-import {
-  tasks as initialTasks,
-  statuses as initialStatuses,
-} from '../data';
 
 // Automações padrão (config de UI — mantidas no hook/localStorage)
 const DEFAULT_AUTOMATIONS: Automation[] = [
@@ -40,11 +37,43 @@ function loadAutomations(): Automation[] {
 }
 
 export function useTasks(userFullName?: string, userAvatar?: string) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [taskStatuses, setTaskStatuses] = useState<Status[]>([]);
+  const queryClient = useQueryClient();
   const [automations, setAutomations] = useState<Automation[]>(loadAutomations);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: tasks = [], isLoading: isTasksLoading, isError: isTasksError } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: fetchTasks,
+  });
+
+  const { data: taskStatuses = [], isLoading: isStatusesLoading } = useQuery({
+    queryKey: ['taskStatuses'],
+    queryFn: fetchTaskStatuses,
+  });
+
+  const isLoading = isTasksLoading || isStatusesLoading;
+
+  useEffect(() => {
+    if (isTasksError) {
+      setError('Falha ao carregar as tarefas do banco de dados.');
+    } else {
+      setError(null);
+    }
+  }, [isTasksError]);
+
+  const setTasks = useCallback((updater: any) => {
+    queryClient.setQueryData(['tasks'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const setTaskStatuses = useCallback((updater: any) => {
+    queryClient.setQueryData(['taskStatuses'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
 
   // Guardar ref das automations para usar em callbacks sem stale closure
   const automationsRef = useRef(automations);
@@ -55,40 +84,6 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
     localStorage.setItem('line_os_automations', JSON.stringify(automations));
   }, [automations]);
 
-  // ─── Carregamento inicial ──────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [tasksData, statusesData] = await Promise.all([
-          fetchTasks(),
-          fetchTaskStatuses(),
-        ]);
-        if (cancelled) return;
-
-        // Fallback para dados locais se Supabase não disponível
-        setTasks(tasksData.length > 0 ? tasksData : initialTasks.map(t => ({
-          ...t, createdAt: new Date().toISOString(), comments: [], attachments: []
-        })));
-        setTaskStatuses(statusesData.length > 0 ? statusesData : initialStatuses);
-      } catch (err) {
-        if (cancelled) return;
-        console.error('[useTasks] Erro ao carregar:', err);
-        setError('Falha ao conectar com o banco de dados. Por favor, verifique sua conexão ou se as tabelas do Supabase foram criadas.');
-        setTasks([]);
-        setTaskStatuses(initialStatuses);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
   // ─── Realtime Subscription ─────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) return;
@@ -97,7 +92,7 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
       .channel('tasks_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         fetchTasks().then(data => {
-          if (data.length > 0) setTasks(data);
+          setTasks(data);
         }).catch(console.error);
       })
       .subscribe();

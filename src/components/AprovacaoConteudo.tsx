@@ -536,7 +536,7 @@ const AprovacaoConteudo = () => {
                 onClick={() => setViewMode('calendar')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 ${viewMode === 'calendar' ? 'bg-[#2a2a2a] text-white shadow-md border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
               >
-                <Calendar className="w-3.5 h-3.5" /> 360º
+                <Calendar className="w-3.5 h-3.5" /> Calendário
               </button>
             </div>
             <button
@@ -734,13 +734,12 @@ const AprovacaoConteudo = () => {
         {editingContent && <NovoConteudoModal initialData={editingContent} onEdit={handleEditSubmit} onClose={() => setEditingContent(null)} />}
         {viewingContent !== null && (
           <ContentDetailModal
-            content={viewingContent}
+            content={contents.find(c => c.id === viewingContent.id) || viewingContent}
             onClose={() => setViewingContent(null)}
             onApprove={handleApprove}
             onRequestChange={handleRequestChange}
             onRevokeApproval={(id) => {
               updateContentStatus(Number(id), 'PENDENTE', null);
-              setViewingContent(null);
               showToast('Aprovação retirada com sucesso.');
             }}
           />

@@ -174,3 +174,45 @@ select {
   outline: none;
   box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--border-focus);
 }
+/* Resize handles para react-grid-layout */
+/* Dashboard Grid Custom Resize Handles */
+.custom-resize-handle {
+  position: absolute;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+.react-grid-item:hover .custom-resize-handle {
+  opacity: 1;
+}
+
+/* Laterais E e W: Barras clicáveis verticais */
+.custom-resize-handle-e {
+  top: 0; right: 0; bottom: 0; width: 12px;
+  cursor: col-resize;
+  background: linear-gradient(to left, rgba(255,255,255,0.08), transparent);
+}
+.custom-resize-handle-w {
+  top: 0; left: 0; bottom: 0; width: 12px;
+  cursor: col-resize;
+  background: linear-gradient(to right, rgba(255,255,255,0.08), transparent);
+}
+
+/* Base S: Barra clicável horizontal */
+.custom-resize-handle-s {
+  bottom: 0; left: 0; right: 0; height: 12px;
+  cursor: row-resize;
+  background: linear-gradient(to top, rgba(255,255,255,0.08), transparent);
+}
+
+/* Cantos SE e SW: Pontos de arraste diagonais */
+.custom-resize-handle-se {
+  bottom: 0; right: 0; width: 24px; height: 24px;
+  cursor: se-resize;
+  background: radial-gradient(circle at bottom right, rgba(255,255,255,0.3) 10%, transparent 50%);
+}
+.custom-resize-handle-sw {
+  bottom: 0; left: 0; width: 24px; height: 24px;
+  cursor: sw-resize;
+  background: radial-gradient(circle at bottom left, rgba(255,255,255,0.3) 10%, transparent 50%);
+}

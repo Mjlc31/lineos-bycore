@@ -6,6 +6,7 @@ import {
 import { ViewType, Client } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from './Toast';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -15,6 +16,7 @@ interface SidebarProps {
 
 const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProps) => {
   const { tasks, clients } = useAppContext();
+  const { profile } = useAuth();
   const { showToast, ToastContainer } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [space1Open, setSpace1Open] = useState(true);
@@ -39,9 +41,9 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="w-6 h-6 rounded bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-            A
+            {(profile?.fullName || 'A')[0].toUpperCase()}
           </div>
-          <span className="font-medium text-sm truncate text-gray-200">Arthur de Moraes's Workspace</span>
+          <span className="font-medium text-sm truncate text-gray-200">{profile?.fullName ? `${profile.fullName}'s Workspace` : 'LINE OS Workspace'}</span>
           <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
         </div>
       </div>
@@ -199,11 +201,17 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
             </div>
             {space2Open && (
               <div className="ml-6 pl-2 border-l border-[#333333] mt-1 space-y-0.5">
-                {/* Apenas "Projetos" — Clientes foi removido (Ajuste 6) */}
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer text-gray-400 hover:text-gray-200 transition-colors">
-                  <FolderIcon className="w-4 h-4 text-gray-400" />
+                {/* "Tarefas" que navega para tasks view */}
+                <button
+                  onClick={() => onViewChange('tasks')}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+                    (currentView === 'tasks' || currentView === 'board' || currentView === 'calendar') ? 'bg-[#2b2b2b] text-white' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
+                  }`}
+                >
+                  <FolderIcon className="w-4 h-4 text-orange-400" />
                   <span className="text-sm font-medium">Projetos</span>
-                </div>
+                  {tasks.length > 0 && <span className="ml-auto text-[10px] text-gray-500">{tasks.length}</span>}
+                </button>
                 {/* Ajuste 7: DNA dos Clientes */}
                 <button
                   onClick={() => onViewChange('dna-clientes')}

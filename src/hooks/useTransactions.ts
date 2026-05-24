@@ -1,73 +1,60 @@
 /**
  * useTransactions — Hook para o módulo Financeiro/DRE
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchTransactions, createTransaction as createTxDB,
   deleteTransaction as deleteTxDB, fetchFinancialSummary,
 } from '../services';
 import type { Transaction } from '../types';
-import { transactions as initialTransactions } from '../data';
 import type { FinancialSummary } from '../services/transactionService';
 
 export function useTransactions() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [summary, setSummary] = useState<FinancialSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // ─── Carregamento inicial ──────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const [txData, summaryData] = await Promise.all([
-          fetchTransactions(),
-          fetchFinancialSummary(),
-        ]);
-        if (!cancelled) {
-          setTransactions(txData.length > 0 ? txData : initialTransactions);
-          setSummary(summaryData);
-        }
-      } catch (err) {
-        console.error('[useTransactions] Erro ao carregar do Supabase:', err);
-        if (!cancelled) {
-          setTransactions([]);
-          alert('Erro ao carregar Transações. Verifique a tabela transactions.');
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: transactions = [], isLoading: isTxLoading } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: fetchTransactions,
+  });
 
-  // ─── Actions ──────────────────────────────────────────────────────────────
+  const { data: summary = null, isLoading: isSummaryLoading } = useQuery({
+    queryKey: ['financialSummary'],
+    queryFn: fetchFinancialSummary,
+  });
+
+  const isLoading = isTxLoading || isSummaryLoading;
+
+  const setTransactions = useCallback((updater: any) => {
+    queryClient.setQueryData(['transactions'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
   const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>) => {
     const tempId = Date.now();
     const optimistic = { ...tx, id: tempId };
-    setTransactions(prev => [optimistic, ...prev]);
+    setTransactions((prev: Transaction[]) => [optimistic, ...prev]);
 
     try {
       const saved = await createTxDB(tx);
-      setTransactions(prev => prev.map(t => t.id === tempId ? saved : t));
-      // Atualizar resumo financeiro
-      fetchFinancialSummary().then(s => { if (s) setSummary(s); }).catch(() => {});
+      setTransactions((prev: Transaction[]) => prev.map(t => t.id === tempId ? saved : t));
+      queryClient.invalidateQueries({ queryKey: ['financialSummary'] });
     } catch (err) {
       console.error('[useTransactions] addTransaction falhou:', err);
     }
-  }, []);
+  }, [setTransactions, queryClient]);
 
   const deleteTransaction = useCallback(async (id: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    setTransactions((prev: Transaction[]) => prev.filter(t => t.id !== id));
     try {
       await deleteTxDB(id);
-      fetchFinancialSummary().then(s => { if (s) setSummary(s); }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['financialSummary'] });
     } catch (err) {
       console.error('[useTransactions] deleteTransaction falhou:', err);
     }
-  }, []);
+  }, [setTransactions, queryClient]);
 
   return {
     transactions, setTransactions,

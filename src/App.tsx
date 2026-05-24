@@ -16,11 +16,17 @@ import { useAuth } from './context/AuthContext';
 import ApprovalClientView from './components/ApprovalClientView';
 import UserManagement from './components/UserManagement';
 import RhCatalogo from './components/RhCatalogo';
+import InstagramPreview from './components/InstagramPreview';
 
 function App() {
   const { session, profile, isAuthLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<LineOsTab>('dashboard');
   const [showPalette, setShowPalette] = useState(false);
+
+  // Rota pública de simulação (Link Builder)
+  if (window.location.pathname.startsWith('/preview/instagram')) {
+    return <InstagramPreview />;
+  }
 
   // Global Ctrl+K listener
   useEffect(() => {

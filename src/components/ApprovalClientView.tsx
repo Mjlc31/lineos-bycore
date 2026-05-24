@@ -212,11 +212,10 @@ const ApprovalClientView = () => {
       <AnimatePresence>
         {viewingContent !== null && (
           <ContentDetailModal 
-            content={viewingContent} 
+            content={contentItems.find(c => c.id === viewingContent.id) || viewingContent} 
             onClose={() => setViewingContent(null)}
             onApprove={(id) => {
               handleApprove(id);
-              setViewingContent(null);
             }}
             onRequestChange={(id, txt) => {
               submitFeedback(id, txt);
@@ -224,7 +223,6 @@ const ApprovalClientView = () => {
             }}
             onRevokeApproval={(id) => {
               handleRevokeApproval(id);
-              setViewingContent(null);
             }}
           />
         )}

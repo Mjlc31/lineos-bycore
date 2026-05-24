@@ -11,6 +11,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { Bold, Italic, Underline as UnderlineIcon, Highlighter, Palette, Type } from 'lucide-react';
+import { SlashCommands } from './SlashCommands';
 
 // ─── Paletas de cores disponíveis ─────────────────────────────────────────────
 const TEXT_COLORS = [
@@ -114,6 +115,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      SlashCommands,
     ],
     content: value,
     onUpdate: ({ editor }) => {

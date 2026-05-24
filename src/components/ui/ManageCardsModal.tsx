@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Search, Sparkles, LayoutDashboard, ListTodo, Calendar, AlertCircle, MessageSquare } from 'lucide-react';
+import { X, Search, Sparkles, LayoutDashboard, ListTodo, Calendar, AlertCircle, MessageSquare, FileText, Timer, PieChart, Tag, Users, Table2, MonitorPlay } from 'lucide-react';
 import useEscapeKey from '../../hooks/useEscapeKey';
 
 export interface WidgetOption {
@@ -49,6 +49,54 @@ export const AVAILABLE_WIDGETS: WidgetOption[] = [
     category: 'Featured', color: 'from-cyan-500 to-blue-500', 
     icon: <MessageSquare className="w-5 h-5 text-white" /> 
   },
+  { 
+    id: 'custom-text', name: 'Bloco de Texto', 
+    description: 'Adicione notas, links ou instruções personalizadas.', 
+    category: 'Custom', color: 'from-gray-600 to-gray-500', 
+    icon: <FileText className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'sprint-velocity', name: 'Velocidade da Sprint', 
+    description: 'Acompanhe o volume de trabalho concluído a cada sprint.', 
+    category: 'Sprints', color: 'from-green-500 to-emerald-500', 
+    icon: <Timer className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'workload-by-status', name: 'Tarefas por Status', 
+    description: 'Visualize a distribuição de tarefas por status.', 
+    category: 'Statuses', color: 'from-blue-500 to-cyan-500', 
+    icon: <PieChart className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'task-by-tag', name: 'Tarefas por Tag', 
+    description: 'Gráfico de barras mostrando as tarefas agrupadas por tag.', 
+    category: 'Tags', color: 'from-pink-500 to-rose-500', 
+    icon: <Tag className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'workload-by-assignee', name: 'Carga por Responsável', 
+    description: 'Veja quantas tarefas cada membro da equipe possui.', 
+    category: 'Assignees', color: 'from-indigo-500 to-violet-500', 
+    icon: <Users className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'time-tracked', name: 'Tempo Rastreado', 
+    description: 'Relatório de horas apontadas em tarefas.', 
+    category: 'Time Tracking', color: 'from-sky-500 to-blue-400', 
+    icon: <Timer className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'task-table', name: 'Tabela de Tarefas', 
+    description: 'Uma lista detalhada e configurável de tarefas.', 
+    category: 'Tables', color: 'from-slate-600 to-slate-500', 
+    icon: <Table2 className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'figma-embed', name: 'Embed do Figma', 
+    description: 'Incorpore designs e protótipos diretamente do Figma.', 
+    category: 'Embeds and Apps', color: 'from-red-500 to-pink-500', 
+    icon: <MonitorPlay className="w-5 h-5 text-white" /> 
+  }
 ];
 
 const CATEGORIES = [

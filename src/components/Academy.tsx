@@ -98,9 +98,7 @@ const Academy = () => {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-red-500" /> Trilhas de Conhecimento
             </h3>
-            <button className="text-sm font-medium text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
-              Ver todas trilhas <ChevronRight className="w-4 h-4" />
-            </button>
+            <span className="text-sm text-gray-500 font-medium">{academyTracks.length} trilhas disponíveis</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

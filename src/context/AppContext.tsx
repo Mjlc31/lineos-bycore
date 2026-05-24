@@ -95,6 +95,7 @@ interface AppContextType {
   updateLeadStatus: (leadId: string, newColumnId: string) => void;
   addTransaction: (tx: Omit<Transaction, 'id'>) => void;
   addLead: (lead: Omit<Lead, 'id'>) => void;
+  deleteLead: (leadId: string) => void;
   updateLeadDetails: (leadId: string, updates: Partial<Lead>) => void;
   addLeadActivity: (leadId: string, activity: Omit<LeadActivity, 'id'>) => void;
   addLeadTask: (leadId: string, task: Omit<LeadTask, 'id' | 'leadId' | 'createdAt'>) => void;
@@ -239,6 +240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateLeadStatus,
       addTransaction: transactionsHook.addTransaction,
       addLead: leadsHook.addLead,
+      deleteLead: leadsHook.deleteLead,
       updateLeadDetails: leadsHook.updateLeadDetails,
       addLeadActivity: leadsHook.addLeadActivity,
       addLeadTask,

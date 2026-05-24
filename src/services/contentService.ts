@@ -88,7 +88,7 @@ export async function updateContentItem(
 ): Promise<void> {
   if (!supabase) return;
 
-  const dbPatch: Record<string, unknown> = {};
+  const dbPatch: any = {};
   if (patch.title !== undefined)      dbPatch.title = patch.title;
   if (patch.type !== undefined)       dbPatch.type = patch.type;
   if (patch.status !== undefined)     dbPatch.status = patch.status;

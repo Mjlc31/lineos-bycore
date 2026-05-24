@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  Plus, TrendingUp, DollarSign, MoreHorizontal, Building2,
+  Plus, TrendingUp, DollarSign, Building2,
   Calendar, DollarSign as DollarIcon, X, Trash2, Clock, MessageCircle, Settings2, ChevronDown
 } from 'lucide-react';
 import {
@@ -172,9 +172,10 @@ const SortableItem = ({ id, item, onDelete, onArchive, onClick }: SortableItemPr
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
+    transition: transition || 'transform 250ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
     opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 999 : 1,
     touchAction: 'none',
   };
 
@@ -190,7 +191,7 @@ const SortableItem = ({ id, item, onDelete, onArchive, onClick }: SortableItemPr
       {...attributes}
       {...listeners}
       onClick={() => onClick(item)}
-      className="rounded-xl p-3 flex flex-col gap-3 cursor-grab active:cursor-grabbing transition-all duration-150 group hover:brightness-110 relative"
+      className={`rounded-xl p-3 flex flex-col gap-3 transition-colors duration-200 group hover:brightness-110 relative ${isDragging ? 'cursor-grabbing shadow-inner' : 'cursor-grab'}`}
     >
       <div className="flex items-start justify-between gap-2">
         <h4 className="font-medium text-sm flex items-start gap-2 text-white">
@@ -262,7 +263,7 @@ const DroppableColumn = ({ col, children, isOver }: any) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const CrmVendas = () => {
-  const { leads: items, setLeads: setItems, updateLeadStatus, addLead, updateLeadDetails, addTransaction, addClient } = useAppContext();
+  const { leads: items, setLeads: setItems, updateLeadStatus, addLead, updateLeadDetails, addTransaction, addClient, deleteLead } = useAppContext();
   const {
     pipelines, activePipeline, activePipelineId, setActivePipelineId,
     addPipeline, deletePipeline,
@@ -400,16 +401,10 @@ const CrmVendas = () => {
     (id: string) => {
       const deleted = items.find((i) => i.id === id);
       if (!deleted) return;
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      showToast(`"${deleted.title}" removido.`, () => {
-        setItems((prev) => {
-          const exists = prev.find((i) => i.id === id);
-          if (exists) return prev;
-          return [...prev, deleted];
-        });
-      });
+      deleteLead(id);
+      showToast(`"${deleted.title}" removido.`);
     },
-    [items, setItems, showToast]
+    [items, deleteLead, showToast]
   );
 
   const handleAddLead = (lead: Lead) => {
@@ -524,8 +519,12 @@ const CrmVendas = () => {
                               {columnItems.length}
                             </span>
                           </div>
-                          <button className="p-1 hover:bg-[#222] rounded text-gray-600 hover:text-white transition-colors">
-                            <MoreHorizontal className="w-4 h-4" />
+                          <button
+                            onClick={() => setShowModal(true)}
+                            className="p-1 hover:bg-[#222] rounded text-gray-600 hover:text-white transition-colors"
+                            title="Adicionar lead nesta coluna"
+                          >
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                         <div className="text-[11px] text-gray-500 px-1 font-medium flex-shrink-0">
@@ -575,11 +574,14 @@ const CrmVendas = () => {
                 );
               })}
 
-              <DragOverlay>
+              <DragOverlay dropAnimation={{
+                duration: 250,
+                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)'
+              }}>
                 {activeItem ? (
-                  <div className="bg-[#1c1c1c] border border-[#444] rounded-xl p-4 shadow-2xl rotate-2 scale-105 w-[clamp(240px,20vw,320px)]">
+                  <div className="bg-[#1c1c1c] border border-primary/50 rounded-xl p-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8),0_0_0_2px_var(--color-primary)] rotate-3 scale-105 w-[clamp(240px,20vw,320px)] cursor-grabbing backdrop-blur-md">
                     <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-white">
-                      <div className="w-6 h-6 rounded bg-[#333] flex items-center justify-center text-white">
+                      <div className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center text-primary">
                         <Building2 className="w-3 h-3" />
                       </div>
                       {activeItem.title}

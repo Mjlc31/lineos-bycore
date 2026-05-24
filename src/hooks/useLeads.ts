@@ -6,6 +6,7 @@
  * O trigger `on_lead_won` no PostgreSQL cuida disso automaticamente.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import {
   fetchLeads, createLead, updateLead, moveLead as moveLeadDB,
@@ -33,40 +34,25 @@ function loadCrmColumns(): CrmColumn[] {
 }
 
 export function useLeads() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const queryClient = useQueryClient();
   const [crmColumns, setCrmColumns] = useState<CrmColumn[]>(loadCrmColumns);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ['leads'],
+    queryFn: fetchLeads,
+  });
+
+  const setLeads = useCallback((updater: any) => {
+    queryClient.setQueryData(['leads'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
 
   // Persistir configuração de colunas localmente (é config de UI)
   useEffect(() => {
     localStorage.setItem('line_os_crm_columns', JSON.stringify(crmColumns));
   }, [crmColumns]);
-
-  // ─── Carregamento inicial ──────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchLeads();
-        if (!cancelled) {
-          setLeads(data.length > 0 ? data : initialLeads);
-        }
-      } catch (err) {
-        console.error('[useLeads] Erro ao carregar do Supabase:', err);
-        if (!cancelled) {
-          setLeads([]);
-          alert('Erro ao carregar Leads. Verifique a tabela crm_leads.');
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, []);
 
   // ─── Realtime Subscription ─────────────────────────────────────────────────
   useEffect(() => {
@@ -76,7 +62,7 @@ export function useLeads() {
       .channel('leads_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'crm_leads' }, () => {
         fetchLeads().then(data => {
-          if (data.length > 0) setLeads(data);
+          setLeads(data);
         }).catch(console.error);
       })
       .subscribe();

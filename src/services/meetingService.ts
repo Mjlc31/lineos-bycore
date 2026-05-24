@@ -50,7 +50,7 @@ export async function createMeeting(meeting: Omit<Meeting, 'id'>): Promise<Meeti
 export async function updateMeeting(id: number, patch: Partial<Meeting>): Promise<void> {
   if (!supabase) return;
 
-  const dbPatch: Record<string, unknown> = {};
+  const dbPatch: any = {};
   if (patch.title !== undefined)    dbPatch.title = patch.title;
   if (patch.date !== undefined)     dbPatch.date = patch.date;
   if (patch.time !== undefined)     dbPatch.time = patch.time;

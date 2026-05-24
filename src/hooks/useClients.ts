@@ -1,48 +1,47 @@
 /**
  * useClients — Hook especializado para o módulo de Clientes
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchClients, createClient as createClientDB,
   updateClient as updateClientDB, deleteClient as deleteClientDB,
-  fetchClientStatuses, fetchComments, addComment as addCommentService
+  fetchClientStatuses, fetchClientComments, addClientComment as addClientCommentService
 } from '../services';
 import type { Client, ClientStatus, TaskComment } from '../types';
 import { clients as initialClients, clientStatuses as initialClientStatuses } from '../data';
 
 export function useClients() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [clientStatuses, setClientStatuses] = useState<ClientStatus[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // ─── Carregamento inicial ──────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const [clientsData, statusesData] = await Promise.all([
-          fetchClients(),
-          fetchClientStatuses(),
-        ]);
-        if (!cancelled) {
-          setClients(clientsData.length > 0 ? clientsData : initialClients);
-          setClientStatuses(statusesData.length > 0 ? statusesData : initialClientStatuses);
-        }
-      } catch (err) {
-        console.error('[useClients] Erro ao carregar do Supabase:', err);
-        if (!cancelled) {
-          setClients([]);
-          setClientStatuses(initialClientStatuses);
-          alert('Erro ao carregar Clientes. Verifique a tabela clients.');
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: clients = [], isLoading: isClientsLoading } = useQuery({
+    queryKey: ['clients'],
+    queryFn: fetchClients,
+  });
+
+  const { data: clientStatuses = initialClientStatuses, isLoading: isStatusesLoading } = useQuery({
+    queryKey: ['clientStatuses'],
+    queryFn: async () => {
+      const statuses = await fetchClientStatuses();
+      return statuses.length > 0 ? statuses : initialClientStatuses;
+    },
+  });
+
+  const isLoading = isClientsLoading || isStatusesLoading;
+
+  const setClients = useCallback((updater: any) => {
+    queryClient.setQueryData(['clients'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const setClientStatuses = useCallback((updater: any) => {
+    queryClient.setQueryData(['clientStatuses'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   const addClient = useCallback(async (client: Omit<Client, 'id'>) => {
@@ -89,7 +88,7 @@ export function useClients() {
     ));
 
     try {
-      const saved = await addCommentService(clientId, comment);
+      const saved = await addClientCommentService(clientId, comment);
       setClients(prev => prev.map(c => {
         if (c.id !== clientId) return c;
         return {
@@ -103,7 +102,7 @@ export function useClients() {
   }, []);
 
   const loadClientComments = useCallback(async (clientId: string) => {
-    const comments = await fetchComments(clientId);
+    const comments = await fetchClientComments(clientId);
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, comments } : c));
   }, []);
 

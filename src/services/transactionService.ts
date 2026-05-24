@@ -64,7 +64,7 @@ export interface FinancialSummary {
 export async function fetchFinancialSummary(): Promise<FinancialSummary | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
-    .from('vw_financial_summary' as never)
+    .from('vw_financial_summary')
     .select('*')
     .single();
 

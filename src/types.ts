@@ -101,6 +101,15 @@ export type Client = {
   repositorio?: string;
   ultimaReuniao?: string;
   comments?: TaskComment[];
+  priority?: Priority;
+  estimatedTime?: number;
+  trackedTime?: number;
+  description?: string;
+  tags?: Tag[];
+  relatedTaskIds?: string[];
+  startDate?: string;
+  dueDate?: string;
+  activities?: TaskActivity[];
 };
 
 export type ViewType = 'overview' | 'tasks' | 'clients' | 'board' | 'calendar' | 'client-board' | 'client-database' | 'task-dashboard' | 'dna-clientes';

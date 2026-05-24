@@ -22,7 +22,7 @@ export function useRh() {
       try {
         const data = await fetchRhProfiles();
         if (!cancelled) {
-          setTeam(data.length > 0 ? data : initialTeam);
+          setTeam(data);
         }
       } catch (err) {
         console.error('[useRh] Erro ao carregar do Supabase:', err);

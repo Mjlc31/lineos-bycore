@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Play, Image as ImageIcon, FileText, CheckCircle2, MessageSquare, Calendar, X, Clock, MonitorPlay, AlignLeft, Download, Music, Send } from 'lucide-react';
+import { Play, Image as ImageIcon, FileText, CheckCircle2, MessageSquare, Calendar, X, Clock, MonitorPlay, AlignLeft, Download, Music, Send, Link as LinkIcon } from 'lucide-react';
 import { ContentItem } from '../types';
 import { Modal } from './ui/Modal';
 import useEscapeKey from '../hooks/useEscapeKey';
+import { useToast } from './Toast';
 
 interface ContentDetailModalProps {
   content: ContentItem;
@@ -27,6 +28,19 @@ export const ContentDetailModal = ({ content, onClose, onApprove, onRequestChang
   useEscapeKey(onClose);
   const [feedbackText, setFeedbackText] = useState('');
   const [isRequestingChange, setIsRequestingChange] = useState(false);
+  const { showToast } = useToast();
+
+  const handleCopyLink = () => {
+    const payload = btoa(encodeURIComponent(JSON.stringify({
+      u: content.fileUrl,
+      c: content.caption,
+      e: content.clientEmail,
+      t: content.type
+    })));
+    const url = `${window.location.origin}/preview/instagram?d=${payload}`;
+    navigator.clipboard.writeText(url);
+    showToast('Link copiado! Você já pode enviar para o cliente.');
+  };
 
   const handleSubmitFeedback = () => {
     if (feedbackText.trim() && onRequestChange) {
@@ -249,15 +263,24 @@ export const ContentDetailModal = ({ content, onClose, onApprove, onRequestChang
           {!readonly && content.status === 'APROVADO' && (
              <button 
                onClick={() => {
-                 if (window.confirm('Tem certeza que deseja retirar a aprovação deste conteúdo?')) {
-                   onRevokeApproval && onRevokeApproval(content.id);
-                 }
+                 onRevokeApproval && onRevokeApproval(content.id);
                }}
                className="mt-auto py-3 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 active:bg-red-500/10 active:text-red-400 flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
              >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Aprovado (Toque p/ desfazer)</span>
+                <span>Aprovado (Desfazer)</span>
              </button>
+          )}
+
+          {/* Botão de Link Builder (Sempre disponível se não for readonly ou apenas para equipe) */}
+          {!readonly && (
+            <button
+              onClick={handleCopyLink}
+              className="py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 flex items-center justify-center gap-2 transition-colors shadow-lg mt-1"
+            >
+              <LinkIcon className="w-4 h-4" />
+              Gerar Simulação (Instagram)
+            </button>
           )}
 
         </div>

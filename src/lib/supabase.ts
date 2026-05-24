@@ -73,6 +73,11 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['crm_columns']['Row'], 'created_at'>;
         Update: Partial<Database['public']['Tables']['crm_columns']['Insert']>;
       };
+      crm_pipelines: {
+        Row: { id: string; name: string; columns: Record<string, unknown>[]; sort_order: number; created_at: string };
+        Insert: Omit<Database['public']['Tables']['crm_pipelines']['Row'], 'created_at'>;
+        Update: Partial<Database['public']['Tables']['crm_pipelines']['Insert']>;
+      };
       crm_leads: {
         Row: {
           id: string;

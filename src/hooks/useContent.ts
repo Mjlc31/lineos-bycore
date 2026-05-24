@@ -1,7 +1,8 @@
 /**
  * useContent — Hook especializado para o módulo Aprovação de Conteúdo
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import {
   fetchContentItems, createContentItem as createContentDB,
@@ -11,32 +12,19 @@ import type { ContentItem, ContentStatus } from '../types';
 import { initialContent } from '../data';
 
 export function useContent() {
-  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // ─── Carregamento inicial ──────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchContentItems();
-        if (!cancelled) {
-          setContentItems(data.length > 0 ? data : initialContent);
-        }
-      } catch (err) {
-        console.error('[useContent] Erro ao carregar do Supabase:', err);
-        if (!cancelled) {
-          setContentItems([]);
-          alert('Erro ao carregar conteúdos. Verifique se a tabela content_items existe no Supabase.');
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: contentItems = [], isLoading } = useQuery({
+    queryKey: ['contentItems'],
+    queryFn: fetchContentItems,
+  });
+
+  const setContentItems = useCallback((updater: any) => {
+    queryClient.setQueryData(['contentItems'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
 
   // ─── Realtime ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -45,7 +33,7 @@ export function useContent() {
       .channel('content_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_items' }, () => {
         fetchContentItems().then(data => {
-          if (data.length > 0) setContentItems(data);
+          setContentItems(data);
         }).catch(console.error);
       })
       .subscribe();

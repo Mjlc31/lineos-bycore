@@ -26,6 +26,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const [formData, setFormData] = useState<Partial<Client>>({});
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [activeRightTab, setActiveRightTab] = useState<'activity' | 'comments'>('comments');
 
   useEffect(() => {
     if (client) {
@@ -36,6 +38,14 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
         repositorio: client.repositorio || '',
         ultimaReuniao: client.ultimaReuniao || '',
         statusId: client.statusId || '',
+        priority: client.priority || 'None',
+        estimatedTime: client.estimatedTime || 0,
+        trackedTime: client.trackedTime || 0,
+        description: client.description || '',
+        assignees: client.assignees || [],
+        tags: client.tags || [],
+        startDate: client.startDate || '',
+        dueDate: client.dueDate || '',
       });
       loadClientComments(client.id);
     }
@@ -57,7 +67,27 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
   const handleChange = (field: keyof Client, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    onUpdate(client.id, { [field]: value });
+    
+    // Log activity automatically for certain fields
+    if (field !== 'activities' && field !== 'comments') {
+      const fieldNames: Record<string, string> = {
+        statusId: 'Status', priority: 'Prioridade', assignees: 'Responsáveis', 
+        name: 'Nome', description: 'Descrição'
+      };
+      const fname = fieldNames[field as string] || field;
+      const newActivity = {
+        id: `act-${Date.now()}`,
+        type: 'system',
+        description: `Atualizou o campo ${fname}`,
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedActivities = [newActivity, ...(formData.activities || [])];
+      setFormData(prev => ({ ...prev, activities: updatedActivities }));
+      onUpdate(client.id, { [field]: value, activities: updatedActivities });
+    } else {
+      onUpdate(client.id, { [field]: value });
+    }
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -159,10 +189,32 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><CheckCircle2 className="w-3.5 h-3.5" /></span>
                       Status
                     </div>
-                    <div className="flex-1">
-                      <button className="flex items-center gap-2 px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: currentStatus?.color || '#555' }}>
+                    <div className="flex-1 relative">
+                      <button 
+                        onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                        className="flex items-center gap-2 px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90" 
+                        style={{ backgroundColor: currentStatus?.color || '#555' }}
+                      >
                         {currentStatus?.name || 'NEW CLIENT'} <ChevronDown className="w-3 h-3 opacity-50" />
                       </button>
+                      
+                      {isStatusDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsStatusDropdownOpen(false)} />
+                          <div className="absolute top-full mt-1 left-0 w-48 bg-[#222] border border-[#333] rounded-md shadow-xl z-50 py-1 flex flex-col gap-0.5 max-h-60 overflow-y-auto custom-scrollbar">
+                            {clientStatuses.map(s => (
+                              <div 
+                                key={s.id} 
+                                onClick={() => { handleChange('statusId', s.id); setIsStatusDropdownOpen(false); }} 
+                                className="px-3 py-2 hover:bg-white/5 cursor-pointer text-xs font-medium text-gray-300 flex items-center gap-2 transition-colors"
+                              >
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                                {s.name}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   
@@ -171,8 +223,20 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><Calendar className="w-3.5 h-3.5" /></span>
                       Datas
                     </div>
-                    <div className="flex-1 flex items-center gap-2 text-gray-500 font-medium cursor-pointer hover:bg-white/5 px-2 py-1 rounded -ml-2 transition-colors">
-                      Início <ChevronRight className="w-3 h-3" /> Vencimento
+                    <div className="flex-1 flex items-center gap-2 text-gray-500 font-medium">
+                      <input
+                        type="date"
+                        value={formData.startDate || ''}
+                        onChange={(e) => handleChange('startDate', e.target.value)}
+                        className="bg-transparent text-gray-200 hover:bg-white/5 px-2 py-1 rounded transition-colors focus:outline-none w-[110px]"
+                      />
+                      <ChevronRight className="w-3 h-3" />
+                      <input
+                        type="date"
+                        value={formData.dueDate || ''}
+                        onChange={(e) => handleChange('dueDate', e.target.value)}
+                        className="bg-transparent text-gray-200 hover:bg-white/5 px-2 py-1 rounded transition-colors focus:outline-none w-[110px]"
+                      />
                     </div>
                   </div>
 
@@ -181,8 +245,14 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><Clock className="w-3.5 h-3.5" /></span>
                       Tempo estimado
                     </div>
-                    <div className="flex-1 text-gray-600 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 cursor-pointer transition-colors">
-                      Vazio
+                    <div className="flex-1">
+                      <input 
+                        type="number" 
+                        value={formData.estimatedTime || ''}
+                        onChange={(e) => handleChange('estimatedTime', parseInt(e.target.value) || 0)}
+                        placeholder="Em horas"
+                        className="bg-transparent text-gray-200 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 transition-colors focus:outline-none w-24"
+                      />
                     </div>
                   </div>
 
@@ -191,8 +261,18 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><Tag className="w-3.5 h-3.5" /></span>
                       Etiquetas
                     </div>
-                    <div className="flex-1 text-gray-600 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 cursor-pointer transition-colors">
-                      Vazio
+                    <div className="flex-1">
+                      <input 
+                        type="text" 
+                        value={(formData.tags || []).map((t: any) => t.name || t).join(', ')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const newTags = val.split(',').map(s => s.trim()).filter(Boolean).map(name => ({ name, color: '#4b5563', bgColor: '#1f2937' }));
+                          handleChange('tags', newTags);
+                        }}
+                        placeholder="Tag 1, Tag 2"
+                        className="w-full bg-transparent text-gray-200 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 transition-colors focus:outline-none"
+                      />
                     </div>
                   </div>
                 </div>
@@ -204,8 +284,17 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><Users className="w-3.5 h-3.5" /></span>
                       Responsáveis
                     </div>
-                    <div className="flex-1 flex items-center gap-2 text-gray-600 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 cursor-pointer transition-colors">
-                      Vazio
+                    <div className="flex-1">
+                      <input 
+                        type="text" 
+                        value={(formData.assignees || []).join(', ')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleChange('assignees', val.split(',').map(s => s.trim()).filter(Boolean));
+                        }}
+                        placeholder="URL de avatar"
+                        className="w-full bg-transparent text-gray-200 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 transition-colors focus:outline-none"
+                      />
                     </div>
                   </div>
                   
@@ -214,8 +303,18 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><Flag className="w-3.5 h-3.5" /></span>
                       Prioridade
                     </div>
-                    <div className="flex-1 flex items-center gap-1.5 text-gray-400 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 cursor-pointer transition-colors">
-                      <Flag className="w-3.5 h-3.5 text-gray-500" fill="currentColor" /> Baixa
+                    <div className="flex-1 flex items-center gap-1.5 -ml-2">
+                      <select
+                        value={formData.priority || 'None'}
+                        onChange={(e) => handleChange('priority', e.target.value)}
+                        className="bg-transparent text-gray-300 font-medium hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors focus:outline-none appearance-none"
+                      >
+                        <option value="None" className="bg-[#1a1a1a]">Sem prioridade</option>
+                        <option value="Low" className="bg-[#1a1a1a]">Baixa</option>
+                        <option value="Normal" className="bg-[#1a1a1a]">Normal</option>
+                        <option value="High" className="bg-[#1a1a1a]">Alta</option>
+                        <option value="Urgent" className="bg-[#1a1a1a]">Urgente</option>
+                      </select>
                     </div>
                   </div>
 
@@ -224,8 +323,14 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><PlayCircle className="w-3.5 h-3.5" /></span>
                       Tempo rastreado
                     </div>
-                    <div className="flex-1 flex items-center gap-1.5 text-gray-400 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 cursor-pointer transition-colors">
-                      <PlayCircle className="w-3.5 h-3.5" /> Adicionar hora
+                    <div className="flex-1 flex items-center gap-1.5 -ml-2">
+                      <input 
+                        type="number" 
+                        value={formData.trackedTime || ''}
+                        onChange={(e) => handleChange('trackedTime', parseInt(e.target.value) || 0)}
+                        placeholder="Em horas"
+                        className="bg-transparent text-gray-400 font-medium hover:bg-white/5 px-2 py-1 rounded transition-colors focus:outline-none w-24"
+                      />
                     </div>
                   </div>
 
@@ -234,8 +339,17 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <span className="w-4 flex justify-center"><Network className="w-3.5 h-3.5" /></span>
                       Relacionamentos
                     </div>
-                    <div className="flex-1 text-gray-600 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 cursor-pointer transition-colors">
-                      Vazio
+                    <div className="flex-1">
+                      <input 
+                        type="text" 
+                        value={(formData.relatedTaskIds || []).join(', ')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleChange('relatedTaskIds', val.split(',').map(s => s.trim()).filter(Boolean));
+                        }}
+                        placeholder="Adicionar ID de relação"
+                        className="w-full bg-transparent text-gray-200 font-medium hover:bg-white/5 px-2 py-1 rounded -ml-2 transition-colors focus:outline-none"
+                      />
                     </div>
                   </div>
                 </div>
@@ -245,12 +359,14 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               <div className="mb-10">
                 <div className="flex items-center gap-2 text-gray-500 mb-3 hover:text-gray-300 cursor-pointer transition-colors">
                   <AlignLeft className="w-4 h-4" />
-                  <span className="text-sm font-medium">Adicionar descrição</span>
+                  <span className="text-sm font-medium">Descrição do Cliente</span>
                 </div>
-                <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#2b2b2b] rounded-lg p-2.5 w-max hover:border-[#444] cursor-pointer transition-colors">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-xs font-semibold text-gray-300">Escrever com IA</span>
-                </div>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => handleChange('description', e.target.value)}
+                  placeholder="Adicione uma descrição, observações gerais ou contexto do cliente..."
+                  className="w-full bg-[#1a1a1a] border border-[#2b2b2b] rounded-lg p-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#444] resize-y min-h-[100px] transition-colors"
+                />
               </div>
 
               {/* Campos Customizados */}
@@ -323,10 +439,44 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
               {/* Subtarefas */}
               <div>
-                <h3 className="text-sm font-bold text-gray-200 mb-4">Adicionar subtarefa</h3>
-                <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 px-2 py-1.5 rounded transition-colors -ml-2">
-                  <Plus className="w-3.5 h-3.5" /> Add Client
-                </button>
+                <h3 className="text-sm font-bold text-gray-200 mb-4">Adicionar Tarefas / Subtarefas Relacionadas</h3>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Tarefa XYZ, Novo projeto..."
+                    className="flex-1 bg-transparent text-sm text-gray-200 hover:bg-white/5 px-3 py-2 rounded border border-transparent focus:border-[#444] transition-colors focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim() !== '') {
+                        const newTasks = [...(formData.relatedTaskIds || []), e.currentTarget.value.trim()];
+                        handleChange('relatedTaskIds', newTasks);
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                  <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 px-3 py-2 rounded border border-[#333] transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Adicionar
+                  </button>
+                </div>
+                
+                {/* Lista de Tarefas Relacionadas */}
+                {formData.relatedTaskIds && formData.relatedTaskIds.length > 0 && (
+                  <div className="mt-4 flex flex-col gap-2">
+                    {formData.relatedTaskIds.map((taskId, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2b2b2b] px-3 py-2 rounded-lg">
+                        <span className="text-xs text-gray-300 font-medium">{taskId}</span>
+                        <button 
+                          onClick={() => {
+                            const newTasks = formData.relatedTaskIds!.filter((_, i) => i !== idx);
+                            handleChange('relatedTaskIds', newTasks);
+                          }}
+                          className="text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -339,46 +489,77 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               <h3 className="text-sm font-bold text-gray-200">Atividade</h3>
               <div className="flex items-center gap-3 text-gray-500">
                 <Search className="w-4 h-4 hover:text-gray-300 cursor-pointer transition-colors" />
-                <History className="w-4 h-4 hover:text-gray-300 cursor-pointer transition-colors" />
                 <div className="w-px h-4 bg-[#333]" />
-                <span className="text-[11px] font-medium border border-[#333] rounded px-1.5 hover:bg-white/5 cursor-pointer">
-                  Atividade
-                </span>
+                <button 
+                  onClick={() => setActiveRightTab('activity')}
+                  className={`text-[11px] font-medium px-2 py-1 rounded transition-colors ${activeRightTab === 'activity' ? 'bg-white/10 text-gray-200' : 'hover:bg-white/5 text-gray-500'}`}
+                >
+                  Histórico
+                </button>
+                <button 
+                  onClick={() => setActiveRightTab('comments')}
+                  className={`text-[11px] font-medium px-2 py-1 rounded transition-colors ${activeRightTab === 'comments' ? 'bg-white/10 text-gray-200' : 'hover:bg-white/5 text-gray-500'}`}
+                >
+                  Comentários
+                </button>
               </div>
             </div>
 
-            {/* Activity Feed */}
+            {/* Content Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
               <div className="flex flex-col gap-6 relative">
                 {/* Timeline Line */}
                 <div className="absolute left-3 top-2 bottom-0 w-px bg-[#2b2b2b] -z-10" />
 
-                {(client.comments || []).length === 0 ? (
-                  <div className="text-center text-gray-500 text-xs mt-4">Nenhum comentário ainda.</div>
-                ) : (
-                  (client.comments || []).map((comment) => (
-                    <div key={comment.id} className="flex gap-4">
-                      <img 
-                        src={comment.authorAvatar} 
-                        alt={comment.authorName}
-                        className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5 z-10 border border-[#333]" 
-                      />
-                      <div className="flex-1">
-                        <p className="text-[13px] text-gray-300">
-                          <span className="font-semibold text-gray-200">{comment.authorName}</span>
-                        </p>
-                        <p className="text-[13px] text-gray-400 mt-1 whitespace-pre-wrap">{comment.content}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          {new Date(comment.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                        </p>
+                {activeRightTab === 'comments' && (
+                  (client.comments || []).length === 0 ? (
+                    <div className="text-center text-gray-500 text-xs mt-4 bg-[#141414] py-2">Nenhum comentário ainda.</div>
+                  ) : (
+                    (client.comments || []).map((comment) => (
+                      <div key={comment.id} className="flex gap-4">
+                        <img 
+                          src={comment.authorAvatar} 
+                          alt={comment.authorName}
+                          className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5 z-10 border border-[#333]" 
+                        />
+                        <div className="flex-1 bg-[#1a1a1a] p-3 rounded-lg border border-[#2b2b2b]">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-semibold text-gray-200 text-[12px]">{comment.authorName}</span>
+                            <span className="text-[10px] text-gray-500">
+                              {new Date(comment.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                          </div>
+                          <p className="text-[13px] text-gray-400 whitespace-pre-wrap">{comment.content}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))
+                  )
+                )}
+
+                {activeRightTab === 'activity' && (
+                  (formData.activities || []).length === 0 ? (
+                    <div className="text-center text-gray-500 text-xs mt-4 bg-[#141414] py-2">Nenhuma atividade recente.</div>
+                  ) : (
+                    (formData.activities || []).map((act: any) => (
+                      <div key={act.id} className="flex gap-4 items-start">
+                        <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center flex-shrink-0 mt-0.5 z-10">
+                          <History className="w-3 h-3 text-gray-400" />
+                        </div>
+                        <div className="flex-1 mt-1">
+                          <p className="text-[13px] text-gray-300">{act.description}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {new Date(act.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )
                 )}
               </div>
             </div>
 
-            {/* Comment Input */}
+            {/* Comment Input (only visible if comments tab is active) */}
+            {activeRightTab === 'comments' && (
             <div className="p-4 border-t border-[#2b2b2b] bg-[#141414]">
               <div className="bg-[#1a1a1a] border border-[#333] rounded-xl focus-within:border-[#555] transition-colors">
                 <textarea
@@ -417,6 +598,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
       </motion.div>

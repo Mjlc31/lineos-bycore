@@ -2,6 +2,10 @@
  * services/index.ts — Barrel export de todos os serviços do LINE OS
  * 
  * Padrão de import recomendado nos hooks e contexts:
+/**
+ * services/index.ts — Barrel export de todos os serviços do LINE OS
+ * 
+ * Padrão de import recomendado nos hooks e contexts:
  *   import { fetchTasks, createTask } from '../services';
  */
 

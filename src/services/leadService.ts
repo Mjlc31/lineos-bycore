@@ -56,7 +56,7 @@ async function fetchAllLeadActivities(): Promise<(LeadActivity & { leadId: strin
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
-      .from('lead_activities' as never)
+      .from('lead_activities')
       .select('*')
       .order('created_at', { ascending: true });
 
@@ -78,7 +78,7 @@ async function fetchAllLeadTasks(): Promise<LeadTask[]> {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
-      .from('lead_tasks' as never)
+      .from('lead_tasks')
       .select('*')
       .order('created_at', { ascending: true });
 
@@ -136,7 +136,7 @@ export async function createLead(lead: Omit<Lead, 'id' | 'activities' | 'tasks'>
 export async function updateLead(id: string, patch: Partial<Lead>): Promise<void> {
   if (!supabase) return;
 
-  const dbPatch: Record<string, unknown> = {};
+  const dbPatch: any = {};
   if (patch.columnId !== undefined)    dbPatch.column_id = patch.columnId;
   if (patch.title !== undefined)       dbPatch.title = patch.title;
   if (patch.value !== undefined)       dbPatch.value = patch.value;
@@ -189,7 +189,7 @@ export async function addLeadActivity(
 
   try {
     const { data, error } = await supabase
-      .from('lead_activities' as never)
+      .from('lead_activities')
       .insert({
         lead_id: leadId,
         type: activity.type,
@@ -230,7 +230,7 @@ export async function addLeadTask(
 
   try {
     const { data, error } = await supabase
-      .from('lead_tasks' as never)
+      .from('lead_tasks')
       .insert({
         lead_id: leadId,
         title: task.title,
@@ -261,8 +261,8 @@ export async function toggleLeadTask(taskId: string, currentDone: boolean): Prom
   if (!supabase) return;
   try {
     await supabase
-      .from('lead_tasks' as never)
-      .update({ done: !currentDone } as never)
+      .from('lead_tasks')
+      .update({ done: !currentDone })
       .eq('id', taskId);
   } catch {
     // graceful degradation

@@ -78,7 +78,7 @@ export function usePipelines() {
       setIsLoading(true);
       try {
         const { data, error } = await supabase
-          .from('crm_pipelines' as never)
+          .from('crm_pipelines')
           .select('*')
           .order('sort_order', { ascending: true });
 
@@ -105,7 +105,7 @@ export function usePipelines() {
   const upsertToSupabase = useCallback(async (pipeline: Pipeline) => {
     if (!supabase) return;
     try {
-      await supabase.from('crm_pipelines' as never).upsert({
+      await supabase.from('crm_pipelines').upsert({
         id: pipeline.id,
         name: pipeline.name,
         columns: pipeline.columns,
@@ -119,7 +119,7 @@ export function usePipelines() {
   const deleteFromSupabase = useCallback(async (id: string) => {
     if (!supabase) return;
     try {
-      await supabase.from('crm_pipelines' as never).delete().eq('id', id);
+      await supabase.from('crm_pipelines').delete().eq('id', id);
     } catch (err) {
       console.warn('[usePipelines] delete falhou, apenas local:', err);
     }

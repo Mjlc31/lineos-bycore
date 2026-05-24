@@ -2,7 +2,8 @@
  * useMeetings — Hook especializado para o módulo Agendamento
  * Inclui Realtime para sincronização ao vivo das reuniões.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import {
   fetchMeetings, createMeeting as createMeetingDB,
@@ -12,32 +13,19 @@ import type { Meeting } from '../types';
 import { initialMeetings } from '../data';
 
 export function useMeetings() {
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // ─── Carregamento inicial ──────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchMeetings();
-        if (!cancelled) {
-          setMeetings(data.length > 0 ? data : initialMeetings);
-        }
-      } catch (err) {
-        console.error('[useMeetings] Erro ao carregar do Supabase:', err);
-        if (!cancelled) {
-          setMeetings([]);
-          alert('Erro ao carregar Reuniões. Verifique a tabela meetings.');
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: meetings = [], isLoading } = useQuery({
+    queryKey: ['meetings'],
+    queryFn: fetchMeetings,
+  });
+
+  const setMeetings = useCallback((updater: any) => {
+    queryClient.setQueryData(['meetings'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
 
   // ─── Realtime Subscription ─────────────────────────────────────────────────
   useEffect(() => {
@@ -46,7 +34,7 @@ export function useMeetings() {
       .channel('meetings_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
         fetchMeetings().then(data => {
-          if (data.length > 0) setMeetings(data);
+          setMeetings(data);
         }).catch(console.error);
       })
       .subscribe();

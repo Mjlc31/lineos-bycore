@@ -126,50 +126,24 @@ const TopBar = ({
       <div className="flex items-center px-6 gap-1 border-b border-[#2b2b2b]">
         <div className="w-px h-4 bg-[#333333] mx-1" />
 
-        {currentView === 'overview' && (
+        {/* Tabs de Tarefas (overview, tasks, board, calendar) */}
+        {(currentView === 'overview' || currentView === 'tasks' || currentView === 'board' || currentView === 'calendar') && (
           <>
-            <Tab icon={<AlignLeft className="w-4 h-4" />} label="Overview" active onClick={() => onViewChange('overview')} />
-            <Tab icon={<List className="w-4 h-4" />} label="Lista" onClick={() => onViewChange('tasks')} />
-            <Tab icon={<LayoutGrid className="w-4 h-4" />} label="Quadro" onClick={() => onViewChange('board')} />
+            <Tab icon={<AlignLeft className="w-4 h-4" />} label="Overview" active={currentView === 'overview'} onClick={() => onViewChange('overview')} />
+            <Tab icon={<List className="w-4 h-4" />} label="Lista" active={currentView === 'tasks'} onClick={() => onViewChange('tasks')} />
+            <Tab icon={<LayoutGrid className="w-4 h-4" />} label="Quadro" active={currentView === 'board'} onClick={() => onViewChange('board')} />
+            <Tab icon={<Calendar className="w-4 h-4" />} label="Calendário" active={currentView === 'calendar'} onClick={() => onViewChange('calendar')} />
           </>
         )}
 
-        {currentView === 'tasks' && (
-          <>
-            <Tab icon={<List className="w-4 h-4" />} label="Lista" active onClick={() => onViewChange('tasks')} />
-            <Tab icon={<LayoutGrid className="w-4 h-4" />} label="Quadro" onClick={() => onViewChange('board')} />
-            <Tab icon={<Calendar className="w-4 h-4" />} label="Calendário" onClick={() => onViewChange('calendar')} />
-          </>
-        )}
-
-        {currentView === 'board' && (
-          <>
-            <Tab icon={<List className="w-4 h-4" />} label="Lista" onClick={() => onViewChange('tasks')} />
-            <Tab icon={<LayoutGrid className="w-4 h-4" />} label="Quadro" active onClick={() => onViewChange('board')} />
-            <Tab icon={<Calendar className="w-4 h-4" />} label="Calendário" onClick={() => onViewChange('calendar')} />
-          </>
-        )}
-
-        {currentView === 'calendar' && (
-          <>
-            <Tab icon={<List className="w-4 h-4" />} label="Lista" onClick={() => onViewChange('tasks')} />
-            <Tab icon={<LayoutGrid className="w-4 h-4" />} label="Quadro" onClick={() => onViewChange('board')} />
-            <Tab icon={<Calendar className="w-4 h-4" />} label="Calendário" active onClick={() => onViewChange('calendar')} />
-          </>
-        )}
-
+        {/* Tabs de Clientes */}
         {(currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database') && (
           <>
-            <Tab icon={<List className="w-4 h-4" />} label="Client List" active={currentView === 'clients'} onClick={() => onViewChange('clients')} />
-            <Tab icon={<LayoutGrid className={`w-4 h-4 ${currentView !== 'client-board' ? 'text-blue-500' : ''}`} />} label="Client Pipeline" active={currentView === 'client-board'} onClick={() => onViewChange('client-board')} />
-            <Tab icon={<Table className={`w-4 h-4 ${currentView !== 'client-database' ? 'text-green-500' : ''}`} />} label="Client Database" active={currentView === 'client-database'} onClick={() => onViewChange('client-database')} />
+            <Tab icon={<List className="w-4 h-4" />} label="Lista" active={currentView === 'clients'} onClick={() => onViewChange('clients')} />
+            <Tab icon={<LayoutGrid className="w-4 h-4" />} label="Pipeline" active={currentView === 'client-board'} onClick={() => onViewChange('client-board')} />
+            <Tab icon={<Table className="w-4 h-4" />} label="Banco de Dados" active={currentView === 'client-database'} onClick={() => onViewChange('client-database')} />
           </>
         )}
-
-        <div className="flex items-center gap-1 px-3 py-2 text-sm text-gray-400 hover:bg-[#2b2b2b] rounded-t-md cursor-pointer transition-colors" onClick={() => showToast('Nova visualização em breve')}>
-          <Plus className="w-4 h-4" />
-          <span>Visualização</span>
-        </div>
       </div>
 
       {/* Sub-bar (Filters, Search, etc.) */}
@@ -380,15 +354,15 @@ const TopBar = ({
             <div className="flex items-center">
               <button
                 onClick={onAddItem}
-                className="bg-primary hover:bg-primary text-white text-xs font-medium px-3 py-1.5 rounded-l flex items-center gap-1 transition-colors border-r border-primary"
+                className="bg-primary hover:bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-l flex items-center gap-1 transition-colors border-r border-red-700"
               >
-                {(currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database') ? 'Add Client' : (
-                  <>
-                    <Plus className="w-3 h-3" /> Tarefa
-                  </>
+                {(currentView === 'clients' || currentView === 'client-board' || currentView === 'client-database') ? (
+                  <><Plus className="w-3 h-3" /> Novo Cliente</>
+                ) : (
+                  <><Plus className="w-3 h-3" /> Tarefa</>
                 )}
               </button>
-              <button className="bg-primary hover:bg-primary text-white px-1.5 py-1.5 rounded-r transition-colors" onClick={(e) => { e.stopPropagation(); showToast('Ações avançadas de criação') }}>
+              <button className="bg-primary hover:bg-red-500 text-white px-1.5 py-1.5 rounded-r transition-colors" onClick={(e) => { e.stopPropagation(); showToast('Ações avançadas de criação') }}>
                 <ChevronDown className="w-3 h-3" />
               </button>
             </div>
