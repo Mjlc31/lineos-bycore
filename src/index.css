@@ -252,12 +252,12 @@ select {
 
 /* ──── Handle Borda Direita (E) ──── */
 .react-resizable-handle-e {
-  top: 50% !important;
-  right: 0 !important;
-  transform: translateY(-50%) !important;
-  width: 8px !important;
-  height: 48px !important;
-  cursor: e-resize !important;
+  top: 0 !important;
+  right: -6px !important;
+  transform: none !important;
+  width: 16px !important;
+  height: 100% !important;
+  cursor: ew-resize !important;
   background: none !important;
   padding: 0 !important;
 }
@@ -265,21 +265,23 @@ select {
 .react-resizable-handle-e::after {
   content: '';
   position: absolute;
-  right: 3px;
+  right: 5px;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
-  height: 32px;
+  width: 4px;
+  height: 40px;
   border-radius: 99px;
-  background: rgba(255,255,255,0.15);
-  transition: background 0.2s;
+  background: rgba(255,255,255,0.12);
+  transition: background 0.15s, height 0.15s;
 }
 
 .react-grid-item:hover .react-resizable-handle-e::after {
   background: rgba(255,255,255,0.35);
+  height: 56px;
 }
 .react-resizable-handle-e:hover::after {
-  background: rgba(99, 102, 241, 0.8) !important;
+  background: rgba(99, 102, 241, 0.9) !important;
+  height: 64px !important;
 }
 
 /* Desativa handles que a lib não suporta de verdade */

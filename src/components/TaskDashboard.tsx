@@ -276,7 +276,7 @@ const TaskDashboard = () => {
   );
 
   const WidgetCard = ({ title, actionIcon, id, children, hasSettings = false }: any) => (
-    <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl overflow-hidden flex flex-col hover:border-[#3a3a3a] transition-colors h-full w-full group relative">
+    <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl flex flex-col hover:border-[#3a3a3a] transition-colors h-full w-full group relative" style={{ overflow: 'visible' }}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.02]">
         <div className="flex items-center gap-2">
           {/* Drag Handle */}
