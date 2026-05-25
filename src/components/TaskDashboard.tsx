@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronDown, ChevronRight, Calendar, Sparkles, CheckCircle2, 
-  Settings, Inbox, Flag, MoreHorizontal, Plus, Circle, CalendarDays, X,
+  Settings, Inbox, Flag, MoreHorizontal, Plus, Circle, CalendarDays, X, Layout as LayoutIcon,
   GripVertical, LayoutDashboard, FileText, Timer, PieChart, Tag, Users, Table2, MonitorPlay
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ResponsiveGridLayout, Layout } from 'react-grid-layout';
+import { ResponsiveGridLayout } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
@@ -137,6 +138,17 @@ const TaskDashboard = () => {
     return { overdue: ov, today: td, next: nx, unscheduled: un, closedTasks: closed };
   }, [tasks, taskStatuses]);
 
+  const recentTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 5);
+  }, [tasks]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  }, []);
+
   const handleLayoutChange = (newLayout: any[]) => {
     setLayout(newLayout);
   };
@@ -202,6 +214,66 @@ const TaskDashboard = () => {
       </div>
     );
   };
+
+  const Section = ({ title, count, isExpanded, onToggle, tasks, emptyMessage }: any) => {
+    return (
+      <div className="flex flex-col">
+        <div 
+          className="flex items-center gap-2 px-2 py-2 hover:bg-white/[0.04] rounded-md cursor-pointer transition-colors group select-none"
+          onClick={onToggle}
+        >
+          <button className="text-gray-500 group-hover:text-gray-300 transition-colors">
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-200 transition-colors">
+            {title === 'Pendente' && <span className="w-3 h-3 border border-gray-400 rounded-full flex items-center justify-center opacity-50" />}
+            {title}
+          </div>
+          <span className="text-xs font-medium text-gray-500">{count}</span>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              {tasks.length === 0 ? (
+                <div className="py-4 px-8 text-xs text-gray-500 font-medium">
+                  {emptyMessage || "Nenhuma tarefa."}
+                </div>
+              ) : (
+                <div className="flex flex-col mb-4 pl-4 border-l-2 border-white/5 ml-3 mt-1">
+                  <div className="flex items-center py-2 px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-white/5">
+                    <div className="w-5 mr-3" />
+                    <div className="flex-1 pr-4">Nome</div>
+                    <div className="w-[80px] px-2">Prioridade</div>
+                    <div className="w-[90px] px-2 text-right">Data</div>
+                  </div>
+                  {tasks.map((task: Task) => (
+                    <TaskRow key={task.id} task={task} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const TabButton = ({ active, onClick, children }: any) => (
+    <button 
+      onClick={onClick}
+      className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+        active ? 'border-primary text-gray-100' : 'border-transparent text-gray-500 hover:text-gray-300'
+      }`}
+    >
+      {children}
+    </button>
+  );
 
   const WidgetCard = ({ title, actionIcon, id, children, hasSettings = false }: any) => (
     <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl overflow-hidden flex flex-col hover:border-[#3a3a3a] transition-colors h-full w-full group relative">
@@ -580,7 +652,7 @@ const TaskDashboard = () => {
             onClick={autoArrange}
             className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-md text-xs font-semibold text-gray-300 transition-colors"
           >
-            <Layout className="w-3.5 h-3.5" /> Organizar Grid
+            <LayoutIcon className="w-3.5 h-3.5" /> Organizar Grid
           </button>
           <button 
             onClick={() => setIsManageModalOpen(true)}
