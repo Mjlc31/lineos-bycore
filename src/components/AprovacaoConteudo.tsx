@@ -143,6 +143,113 @@ const WhatsAppModal = ({ contentTitle, clientEmail, onConfirm, onClose, selected
   );
 };
 
+// ─── Link Builder Modal ────────────────────────────────────────────────────────
+const LinkBuilderModal = ({ 
+  selectedIds, 
+  contents, 
+  clients, 
+  onClose 
+}: { 
+  selectedIds: Set<number>, 
+  contents: ContentItem[], 
+  clients: any[], 
+  onClose: () => void 
+}) => {
+  useEscapeKey(onClose);
+  const { showToast } = useToast();
+  const siteUrl = window.location.origin;
+
+  const grouped = React.useMemo(() => {
+    const selected = contents.filter(c => selectedIds.has(c.id));
+    const groups: Record<string, typeof selected> = {};
+    selected.forEach(c => {
+      const email = c.clientEmail || 'Sem Cliente Vinculado';
+      if (!groups[email]) groups[email] = [];
+      groups[email].push(c);
+    });
+    return groups;
+  }, [selectedIds, contents]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast('Link copiado para a área de transferência!');
+  };
+
+  const generateLink = (items: ContentItem[]) => {
+    const payload = items.map(c => ({
+      u: c.fileUrl,
+      c: c.caption,
+      e: c.clientEmail,
+      t: c.type,
+      ch: c.postChannels,
+      d: c.postDate || c.date
+    }));
+    return `${siteUrl}/simulacao?d=${btoa(encodeURIComponent(JSON.stringify(payload)))}`;
+  };
+
+  const getClientName = (email: string) => {
+    if (email === 'Sem Cliente Vinculado') return email;
+    const client = clients.find(c => c.name.toLowerCase().replace(/\s/g, '') + '@email.com' === email || c.email === email);
+    return client ? client.name : email;
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Link Builder" maxWidth="max-w-2xl">
+      <div className="space-y-4">
+        <p className="text-sm text-gray-400 mb-6">Links de simulação gerados para os clientes selecionados. O link exibirá o post com as molduras visuais de TikTok ou Instagram de forma totalmente limpa e sem necessidade de login.</p>
+        
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+          {Object.entries(grouped).map(([email, items]) => {
+            const link = generateLink(items);
+            const clientName = getClientName(email);
+            
+            return (
+              <div key={email} className="bg-[#141414] border border-white/5 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-white">{clientName}</h4>
+                    <p className="text-xs text-gray-500">{items.length} conteúdo(s) selecionado(s)</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => copyToClipboard(link)}
+                      className="p-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg transition-colors border border-white/10"
+                      title="Copiar Link"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const msg = `Olá! O link de simulação dos seus conteúdos está pronto. Acesse para visualizar como ficarão as suas postagens: ${link}`;
+                        const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg transition-colors flex items-center gap-2"
+                      title="Enviar via WhatsApp"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase">WhatsApp</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="w-full bg-[#0a0a0a] rounded-lg p-3 overflow-hidden text-xs text-gray-500 font-mono whitespace-nowrap overflow-ellipsis">
+                  {link}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end pt-4 mt-2">
+          <button onClick={onClose} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-emerald-500/20">
+            Concluído
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 // ─── ContentFormModal (Novo e Edição) ──────────────────────────────────────────
 const colorMap: Record<ContentType, { color: string; textColor: string; thumbnail: string }> = {
   video: { color: 'from-red-900/80 to-black', textColor: 'text-red-500', thumbnail: 'N' },
@@ -390,6 +497,7 @@ const AprovacaoConteudo = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
   const [whatsappTarget, setWhatsappTarget] = useState<number | string | 'multi' | null>(null);
+  const [showLinkBuilder, setShowLinkBuilder] = useState(false);
   const [viewingContent, setViewingContent] = useState<ContentItem | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const { showToast, ToastContainer } = useToast();
@@ -515,7 +623,7 @@ const AprovacaoConteudo = () => {
             <button
               onClick={() => {
                 if (selectedItems.size > 0) {
-                  setWhatsappTarget('multi');
+                  setShowLinkBuilder(true);
                 } else {
                   showToast('Selecione pelo menos um conteúdo para gerar o link.', () => {});
                 }
@@ -732,6 +840,14 @@ const AprovacaoConteudo = () => {
         )}
         {showAddModal && <NovoConteudoModal onAdd={handleAddSubmit} onClose={() => setShowAddModal(false)} />}
         {editingContent && <NovoConteudoModal initialData={editingContent} onEdit={handleEditSubmit} onClose={() => setEditingContent(null)} />}
+        {showLinkBuilder && (
+          <LinkBuilderModal
+            selectedIds={selectedItems}
+            contents={contents}
+            clients={clients}
+            onClose={() => setShowLinkBuilder(false)}
+          />
+        )}
         {viewingContent !== null && (
           <ContentDetailModal
             content={contents.find(c => c.id === viewingContent.id) || viewingContent}

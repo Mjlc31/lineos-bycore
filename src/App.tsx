@@ -17,6 +17,7 @@ import ApprovalClientView from './components/ApprovalClientView';
 import UserManagement from './components/UserManagement';
 import RhCatalogo from './components/RhCatalogo';
 import InstagramPreview from './components/InstagramPreview';
+import SimulacaoView from './components/SimulacaoView';
 
 function App() {
   const { session, profile, isAuthLoading } = useAuth();
@@ -26,6 +27,9 @@ function App() {
   // Rota pública de simulação (Link Builder)
   if (window.location.pathname.startsWith('/preview/instagram')) {
     return <InstagramPreview />;
+  }
+  if (window.location.pathname.startsWith('/simulacao')) {
+    return <SimulacaoView />;
   }
 
   // Global Ctrl+K listener
