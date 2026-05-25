@@ -174,56 +174,124 @@ select {
   outline: none;
   box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--border-focus);
 }
-/* Resize handles para react-grid-layout */
-/* ─── Resize Handles para react-grid-layout ────────────────────────── */
+/* ─── Resize Handles (react-grid-layout v2 suporta: se, s, e) ────────────── */
+
+/* Esconde o handle padrão da lib (substituímos com CSS puro) */
 .react-resizable-handle {
+  box-sizing: border-box !important;
+  position: absolute !important;
+  z-index: 999 !important;
+}
+
+/* ──── Handle Canto Inferior Direito (SE) ──── */
+.react-resizable-handle-se {
+  bottom: 0 !important;
+  right: 0 !important;
+  width: 20px !important;
+  height: 20px !important;
+  cursor: se-resize !important;
+  background: none !important;
+  padding: 0 !important;
+  /* Ícone de resize como duas linhas diagonais */
+  background-image: none !important;
+}
+
+/* Triângulo colorido no canto */
+.react-resizable-handle-se::after {
+  content: '';
   position: absolute;
-  z-index: 9999;
-  opacity: 0;
-  transition: opacity 0.2s ease, background 0.2s ease;
+  bottom: 4px;
+  right: 4px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 12px;
+  border-color: transparent transparent rgba(255,255,255,0.25) transparent;
+  transition: border-color 0.2s ease;
 }
 
-.react-grid-item:hover .react-resizable-handle {
-  opacity: 0.3;
-}
-.react-resizable-handle:hover {
-  opacity: 1 !important;
+.react-grid-item:hover .react-resizable-handle-se::after {
+  border-color: transparent transparent rgba(255,255,255,0.5) transparent;
 }
 
-/* Lado Direito (E) */
-.react-resizable-handle-e {
-  top: 0; right: 0; bottom: 0; width: 14px;
-  cursor: ew-resize;
-  background: linear-gradient(to left, rgba(255,255,255,0.4), transparent);
+.react-resizable-handle-se:hover::after {
+  border-color: transparent transparent rgba(99, 102, 241, 0.9) transparent !important;
 }
 
-/* Lado Esquerdo (W) */
-.react-resizable-handle-w {
-  top: 0; left: 0; bottom: 0; width: 14px;
-  cursor: ew-resize;
-  background: linear-gradient(to right, rgba(255,255,255,0.4), transparent);
-}
-
-/* Embaixo (S) */
+/* ──── Handle Borda Inferior (S) ──── */
 .react-resizable-handle-s {
-  bottom: 0; left: 0; right: 0; height: 14px;
-  cursor: ns-resize;
-  background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 48px !important;
+  height: 8px !important;
+  cursor: s-resize !important;
+  background: none !important;
+  padding: 0 !important;
 }
 
-/* Em cima (N) */
-.react-resizable-handle-n {
-  top: 0; left: 0; right: 0; height: 14px;
-  cursor: ns-resize;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+.react-resizable-handle-s::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.15);
+  transition: background 0.2s;
 }
 
-/* Remove a diagonal nativa (SE) caso ainda seja gerada */
-.react-resizable-handle-se,
+.react-grid-item:hover .react-resizable-handle-s::after {
+  background: rgba(255,255,255,0.35);
+}
+.react-resizable-handle-s:hover::after {
+  background: rgba(99, 102, 241, 0.8) !important;
+}
+
+/* ──── Handle Borda Direita (E) ──── */
+.react-resizable-handle-e {
+  top: 50% !important;
+  right: 0 !important;
+  transform: translateY(-50%) !important;
+  width: 8px !important;
+  height: 48px !important;
+  cursor: e-resize !important;
+  background: none !important;
+  padding: 0 !important;
+}
+
+.react-resizable-handle-e::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 32px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.15);
+  transition: background 0.2s;
+}
+
+.react-grid-item:hover .react-resizable-handle-e::after {
+  background: rgba(255,255,255,0.35);
+}
+.react-resizable-handle-e:hover::after {
+  background: rgba(99, 102, 241, 0.8) !important;
+}
+
+/* Desativa handles que a lib não suporta de verdade */
+.react-resizable-handle-w,
+.react-resizable-handle-n,
 .react-resizable-handle-sw,
 .react-resizable-handle-nw,
 .react-resizable-handle-ne {
   display: none !important;
 }
 
-
+/* Garante que o overflow não corte os handles nas bordas */
+.react-grid-item {
+  overflow: visible !important;
+}

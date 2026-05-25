@@ -632,12 +632,23 @@ const TaskDashboard = () => {
   };
 
   const autoArrange = () => {
-    const newLayout = layout.map((item, index) => ({
-      ...item,
-      y: Math.floor(index / 2) * 2,
-      x: (index % 2) * 6
-    }));
-    setLayout(newLayout);
+    // Distribui cartões em 2 colunas de largura igual, empurrando tudo pro topo
+    const cols = 12;
+    let x = 0;
+    let y = 0;
+    const newLayout = layout.map((item) => {
+      const w = Math.min(item.w, cols);
+      if (x + w > cols) {
+        x = 0;
+        y += item.h || 3;
+      }
+      const placed = { ...item, x, y, w };
+      x += w;
+      return placed;
+    });
+    // Limpa o cache do localStorage para forçar repintura correta
+    setLayout([]);
+    setTimeout(() => setLayout(newLayout), 50);
   };
 
   return (
@@ -753,17 +764,19 @@ const TaskDashboard = () => {
               className="layout"
               layouts={{ lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }}
               breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-              cols={{ lg: 12, md: 10, sm: 6, xs: 2, xxs: 1 }}
+              cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
               rowHeight={100}
-              margin={[24, 24]}
+              margin={[16, 16]}
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
               isResizable={true}
-              resizeHandles={['s', 'e', 'w', 'n']}
+              resizeHandles={['se', 's', 'e']}
               isDraggable={true}
+              compactType="vertical"
+              preventCollision={false}
             >
               {layout.map(item => (
-                <div key={item.i} data-grid={{ ...item, resizeHandles: ['s', 'e', 'w', 'n'] }}>
+                <div key={item.i} style={{ overflow: 'visible' }}>
                   {renderWidget(item.i)}
                 </div>
               ))}
