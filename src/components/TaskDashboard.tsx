@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronDown, ChevronRight, Calendar, Sparkles, CheckCircle2, 
-  Settings, Inbox, Flag, MoreHorizontal, Plus, Circle, CalendarDays,
+  Settings, Inbox, Flag, MoreHorizontal, Plus, Circle, CalendarDays, X,
   GripVertical, LayoutDashboard, FileText, Timer, PieChart, Tag, Users, Table2, MonitorPlay
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
