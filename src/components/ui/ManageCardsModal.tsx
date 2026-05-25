@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Search, Sparkles, LayoutDashboard, ListTodo, Calendar, AlertCircle, MessageSquare, FileText, Timer, PieChart, Tag, Users, Table2, MonitorPlay } from 'lucide-react';
+import { X, Search, Sparkles, LayoutDashboard, ListTodo, Calendar, AlertCircle, MessageSquare, FileText, Timer, PieChart, Tag, Users, Table2, MonitorPlay, BarChart3, LineChart } from 'lucide-react';
 import useEscapeKey from '../../hooks/useEscapeKey';
 
 export interface WidgetOption {
@@ -96,11 +96,29 @@ export const AVAILABLE_WIDGETS: WidgetOption[] = [
     description: 'Incorpore designs e protótipos diretamente do Figma.', 
     category: 'Embeds and Apps', color: 'from-red-500 to-pink-500', 
     icon: <MonitorPlay className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'chart-team-performance', name: 'Desempenho da Equipe', 
+    description: 'Gráfico de barras de tarefas concluídas por membro.', 
+    category: 'Analytics', color: 'from-indigo-600 to-purple-600', 
+    icon: <BarChart3 className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'chart-tasks-completion', name: 'Histórico de Entregas', 
+    description: 'Acompanhe a linha do tempo de tarefas finalizadas.', 
+    category: 'Analytics', color: 'from-emerald-600 to-teal-500', 
+    icon: <LineChart className="w-5 h-5 text-white" /> 
+  },
+  { 
+    id: 'chart-priority-dist', name: 'Distribuição de Prioridades', 
+    description: 'Gráfico em pizza das prioridades atuais.', 
+    category: 'Analytics', color: 'from-orange-500 to-rose-500', 
+    icon: <PieChart className="w-5 h-5 text-white" /> 
   }
 ];
 
 const CATEGORIES = [
-  'Featured', 'Overview', 'AI Cards', 'Custom', 'Sprints', 
+  'Featured', 'Overview', 'Analytics', 'AI Cards', 'Custom', 'Sprints', 
   'Statuses', 'Tags', 'Assignees', 'Priorities', 'Time Tracking', 
   'Tables', 'Embeds and Apps'
 ];
@@ -180,9 +198,19 @@ export const ManageCardsModal: React.FC<ManageCardsModalProps> = ({ isOpen, onCl
                 >
                   {cat === 'Featured' && <Sparkles className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
                   {cat === 'Overview' && <LayoutDashboard className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Analytics' && <LineChart className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
                   {cat === 'AI Cards' && <Sparkles className="w-3.5 h-3.5 mr-2.5 opacity-70 text-purple-400" />}
+                  {cat === 'Custom' && <FileText className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Sprints' && <Timer className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Statuses' && <PieChart className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Tags' && <Tag className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Assignees' && <Users className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Priorities' && <AlertCircle className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Time Tracking' && <Timer className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Tables' && <Table2 className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
+                  {cat === 'Embeds and Apps' && <MonitorPlay className="w-3.5 h-3.5 mr-2.5 opacity-70" />}
                   {/* default icon if not matched above */}
-                  {['Featured', 'Overview', 'AI Cards'].indexOf(cat) === -1 && <div className="w-3.5 h-3.5 mr-2.5 opacity-50 bg-gray-600 rounded-sm" />}
+                  {['Featured', 'Overview', 'Analytics', 'AI Cards', 'Custom', 'Sprints', 'Statuses', 'Tags', 'Assignees', 'Priorities', 'Time Tracking', 'Tables', 'Embeds and Apps'].indexOf(cat) === -1 && <div className="w-3.5 h-3.5 mr-2.5 opacity-50 bg-gray-600 rounded-sm" />}
                   {cat}
                 </button>
               ))}

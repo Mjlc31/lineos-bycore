@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveGridLayout, Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 import { useAppContext } from '../context/AppContext';
 import { Task } from '../types';
@@ -48,10 +49,33 @@ const isTaskClosed = (statusId: string, statuses: any[]) => {
 };
 
 const DEFAULT_LAYOUT: any[] = [
-  { i: 'assigned-to-me', x: 0, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
-  { i: 'assigned-comments', x: 6, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
-  { i: 'my-tasks', x: 0, y: 4, w: 6, h: 3, minW: 3, minH: 3 },
-  { i: 'calendar', x: 6, y: 4, w: 6, h: 3, minW: 3, minH: 3 },
+  { i: 'assigned-to-me', x: 0, y: 0, w: 6, h: 4, minW: 2, minH: 3 },
+  { i: 'assigned-comments', x: 6, y: 0, w: 6, h: 4, minW: 2, minH: 3 },
+  { i: 'my-tasks', x: 0, y: 4, w: 6, h: 3, minW: 2, minH: 3 },
+  { i: 'calendar', x: 6, y: 4, w: 6, h: 3, minW: 2, minH: 3 },
+];
+
+const TEAM_DATA = [
+  { name: 'Ana', tarefas: 24 },
+  { name: 'Carlos', tarefas: 18 },
+  { name: 'Arthur', tarefas: 32 },
+  { name: 'Maria', tarefas: 15 },
+  { name: 'João', tarefas: 27 },
+];
+
+const COMPLETION_DATA = [
+  { date: 'Seg', concluídas: 12 },
+  { date: 'Ter', concluídas: 19 },
+  { date: 'Qua', concluídas: 15 },
+  { date: 'Qui', concluídas: 22 },
+  { date: 'Sex', concluídas: 28 },
+];
+
+const PRIORITY_DATA = [
+  { name: 'Urgente', value: 12, color: '#ef4444' },
+  { name: 'Alta', value: 25, color: '#f59e0b' },
+  { name: 'Normal', value: 45, color: '#3b82f6' },
+  { name: 'Baixa', value: 18, color: '#6b7280' },
 ];
 
 const TaskDashboard = () => {
@@ -130,7 +154,7 @@ const TaskDashboard = () => {
   const addWidget = (widgetId: string) => {
     setLayout(prev => {
       if (prev.find(p => p.i === widgetId)) return prev;
-      return [...prev, { i: widgetId, x: 0, y: Infinity, w: 6, h: 3, minW: 3, minH: 3 }];
+      return [...prev, { i: widgetId, x: 0, y: Infinity, w: 4, h: 3, minW: 2, minH: 2 }];
     });
   };
 
@@ -499,6 +523,68 @@ const TaskDashboard = () => {
             </div>
           </WidgetCard>
         );
+      case 'chart-team-performance':
+        return (
+          <WidgetCard id={id} title="Desempenho da Equipe" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+            <div className="h-full w-full p-4 pb-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={TEAM_DATA}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="name" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                  <Bar dataKey="tarefas" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </WidgetCard>
+        );
+      case 'chart-tasks-completion':
+        return (
+          <WidgetCard id={id} title="Histórico de Entregas" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+            <div className="h-full w-full p-4 pb-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={COMPLETION_DATA}>
+                  <defs>
+                    <linearGradient id="colorConcluidas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} />
+                  <Area type="monotone" dataKey="concluídas" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorConcluidas)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </WidgetCard>
+        );
+      case 'chart-priority-dist':
+        return (
+          <WidgetCard id={id} title="Distribuição de Prioridades" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+            <div className="h-full w-full p-4 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={PRIORITY_DATA}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {PRIORITY_DATA.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+          </WidgetCard>
+        );
       default:
         return <WidgetCard id={id} title="Desconhecido"><div className="p-4 text-gray-500">Widget "{id}" não encontrado.</div></WidgetCard>;
     }
@@ -615,14 +701,11 @@ const TaskDashboard = () => {
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
               isResizable={true}
-              resizeHandles={['se', 'sw', 's', 'e', 'w']}
-              resizeHandle={(axis: any, ref: any) => (
-                <div ref={ref} className={`custom-resize-handle custom-resize-handle-${axis}`} />
-              )}
+              resizeHandles={['s', 'e', 'w', 'n']}
               isDraggable={true}
             >
               {layout.map(item => (
-                <div key={item.i} data-grid={{ ...item, resizeHandles: ['se', 'sw', 's', 'e', 'w'] }}>
+                <div key={item.i} data-grid={{ ...item }}>
                   {renderWidget(item.i)}
                 </div>
               ))}
