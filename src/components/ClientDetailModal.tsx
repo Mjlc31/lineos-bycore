@@ -47,9 +47,14 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
         startDate: client.startDate || '',
         dueDate: client.dueDate || '',
       });
+    }
+  }, [client]);
+
+  useEffect(() => {
+    if (client?.id) {
       loadClientComments(client.id);
     }
-  }, [client, loadClientComments]);
+  }, [client?.id, loadClientComments]);
 
   if (!isOpen || !client) return null;
 

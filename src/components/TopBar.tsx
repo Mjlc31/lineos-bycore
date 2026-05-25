@@ -3,6 +3,7 @@ import { List, LayoutGrid, Calendar, Plus, Filter, Users, Search, Settings, Shar
 import { ViewType } from '../types';
 import { AnimatePresence, motion } from 'motion/react';
 import { useToast } from './Toast';
+import { useAppContext } from '../context/AppContext';
 
 interface TopBarProps {
   currentView: ViewType;
@@ -33,6 +34,7 @@ const TopBar = ({
   showClosed = true,
   onToggleClosed,
 }: TopBarProps) => {
+  const { addTaskStatus } = useAppContext();
   const { showToast, ToastContainer } = useToast();
   const [showSearch, setShowSearch] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
@@ -234,7 +236,14 @@ const TopBar = ({
                         </button>
                       ))}
                       <div className="border-t border-[#333] mt-1" />
-                      <button className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-white/5" onClick={() => showToast('+ Nova coluna em breve')}>+ Nova coluna</button>
+                      <button className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-white/5" onClick={() => {
+                        const name = window.prompt('Nome do novo status (coluna):');
+                        if (name) {
+                          addTaskStatus({ name, color: '#3b82f6' });
+                          showToast(`Coluna "${name}" criada com sucesso!`);
+                        }
+                        setShowColumnsMenu(false);
+                      }}>+ Nova coluna</button>
                     </motion.div>
                   )}
                 </AnimatePresence>

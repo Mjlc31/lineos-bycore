@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Home, CheckSquare, MoreHorizontal, Plus, Search,
   ChevronDown, ChevronRight, Folder as FolderIcon, List, BarChart3, Dna
@@ -12,17 +12,43 @@ interface SidebarProps {
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
   onOpenClientDetails?: (client: Client) => void;
+  selectedLocation?: { type: 'space' | 'folder' | 'list', id: string } | null;
+  onSelectLocation?: (location: { type: 'space' | 'folder' | 'list', id: string } | null) => void;
 }
 
-const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProps) => {
-  const { tasks, clients } = useAppContext();
+const Sidebar = ({ currentView, onViewChange, onOpenClientDetails, selectedLocation, onSelectLocation }: SidebarProps) => {
+  const { tasks, clients, spaces, folders, lists, addSpace, addFolder, addList } = useAppContext();
   const { profile } = useAuth();
   const { showToast, ToastContainer } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
-  const [space1Open, setSpace1Open] = useState(true);
-  const [space2Open, setSpace2Open] = useState(true);
-  // Ajuste 6: "Clientes Line" agora é uma pasta expansível
-  const [clientesFolderOpen, setClientesFolderOpen] = useState(true);
+  
+  // Controlar quais espaços/pastas estão abertos
+  const [openSpaces, setOpenSpaces] = useState<Record<string, boolean>>({});
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+
+  const toggleSpace = (id: string) => setOpenSpaces(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleFolder = (id: string) => setOpenFolders(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // Inicializar todos os espaços e pastas como abertos
+  useEffect(() => {
+    if (spaces.length > 0 && Object.keys(openSpaces).length === 0) {
+      const initial: Record<string, boolean> = {};
+      spaces.forEach(s => initial[s.id] = true);
+      setOpenSpaces(initial);
+    }
+    if (folders.length > 0 && Object.keys(openFolders).length === 0) {
+      const initial: Record<string, boolean> = {};
+      folders.forEach(f => initial[f.id] = true);
+      setOpenFolders(initial);
+    }
+  }, [spaces, folders]);
+
+  const handleSelectLocation = (type: 'space' | 'folder' | 'list', id: string) => {
+    if (onSelectLocation) {
+      onSelectLocation({ type, id });
+      onViewChange('tasks'); // Redireciona para visualização de tarefas
+    }
+  };
 
   const taskCount = tasks.length;
 
@@ -37,7 +63,7 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
       {/* Workspace Header */}
       <div 
         className="p-4 flex items-center justify-between hover:bg-[#2b2b2b] cursor-pointer transition-colors"
-        onClick={() => showToast('Opções do Workspace em breve')}
+        onClick={() => onViewChange('overview')}
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="w-6 h-6 rounded bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
@@ -73,159 +99,152 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails }: SidebarProp
         <NavItem icon={<Home className="w-4 h-4" />} label="Início" onClick={() => onViewChange('overview')} active={currentView === 'overview'} />
         <NavItem
           icon={<CheckSquare className="w-4 h-4" />}
-          label="Minhas tarefas"
+          label="Tudo (Everything)"
           badge={taskCount}
-          onClick={() => onViewChange('tasks')}
-          active={currentView === 'tasks' || currentView === 'board' || currentView === 'calendar'}
+          onClick={() => {
+            if (onSelectLocation) onSelectLocation(null);
+            onViewChange('tasks');
+          }}
+          active={(currentView === 'tasks' || currentView === 'board' || currentView === 'calendar') && !selectedLocation}
         />
         <NavItem icon={<BarChart3 className="w-4 h-4" />} label="Dashboard" onClick={() => onViewChange('task-dashboard')} active={currentView === 'task-dashboard'} />
+        <NavItem icon={<FolderIcon className="w-4 h-4" />} label="CRM Clientes" onClick={() => onViewChange('client-database')} active={currentView === 'client-database' || currentView === 'clients'} />
+        <NavItem icon={<Dna className="w-4 h-4" />} label="DNA dos Clientes" onClick={() => onViewChange('dna-clientes')} active={currentView === 'dna-clientes'} />
       </div>
 
       {/* Spaces */}
       <div className="mt-4 px-2 flex-1 pb-4">
         <div className="flex items-center justify-between px-2 py-1 text-xs font-semibold text-gray-500 group cursor-pointer hover:text-gray-300 transition-colors">
           <span>Espaços</span>
-          <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={async () => {
+            const name = window.prompt('Nome do novo Espaço:');
+            if (name) {
+              await addSpace({ name, iconText: name[0].toUpperCase(), color: '#E31837' });
+              showToast(`Espaço "${name}" criado!`);
+            }
+          }} />
         </div>
+        
         <div className="mt-1 space-y-0.5">
-
-          {/* ─── Space 1: Line (Clientes) ─────────────────────────────── */}
-          {(!searchQuery || filteredClients.length > 0) && (
-            <div className="mt-2">
-              {/* Space header */}
+          {spaces.map(space => (
+            <div key={space.id} className="mt-2">
               <div
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer group transition-colors hover:bg-white/5"
-                onClick={() => setSpace1Open(!space1Open)}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer group transition-colors ${selectedLocation?.type === 'space' && selectedLocation.id === space.id ? 'bg-[#2b2b2b]' : 'hover:bg-white/5'}`}
+                onClick={(e) => {
+                  // Se clicou direto no espaço, filtra as tarefas
+                  handleSelectLocation('space', space.id);
+                }}
               >
-                {space1Open ? (
-                  <ChevronDown className="w-3 h-3 text-gray-500" />
-                ) : (
-                  <ChevronRight className="w-3 h-3 text-gray-500" />
-                )}
-                <div className="w-5 h-5 rounded bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">S</div>
-                <span className="text-sm font-medium text-gray-200">Space</span>
+                <div onClick={(e) => { e.stopPropagation(); toggleSpace(space.id); }} className="p-0.5 hover:bg-white/10 rounded">
+                  {openSpaces[space.id] ? (
+                    <ChevronDown className="w-3 h-3 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3 text-gray-500" />
+                  )}
+                </div>
+                <div 
+                  className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style={{ backgroundColor: space.color || '#E31837' }}
+                >
+                  {space.icon || space.name[0]}
+                </div>
+                <span className={`text-sm font-medium ${selectedLocation?.type === 'space' && selectedLocation.id === space.id ? 'text-white' : 'text-gray-200'}`}>{space.name}</span>
                 <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                   <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Configurações do Espaço'); }} />
-                  <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { 
+                  <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={async (e) => { 
                     e.stopPropagation(); 
                     const nome = window.prompt('Nome da nova pasta:');
-                    if (nome) showToast(`Pasta "${nome}" criada com sucesso!`);
+                    if (nome) {
+                      await addFolder({ spaceId: space.id, name: nome });
+                      showToast(`Pasta "${nome}" criada com sucesso!`);
+                      setOpenSpaces(prev => ({...prev, [space.id]: true}));
+                    }
+                  }} />
+                  <List className="w-3 h-3 text-gray-400 hover:text-white" onClick={async (e) => {
+                    e.stopPropagation();
+                    const nome = window.prompt('Nome da nova Lista solta:');
+                    if (nome) {
+                      await addList({ spaceId: space.id, name: nome, color: '#3b82f6' });
+                      showToast(`Lista "${nome}" criada!`);
+                      setOpenSpaces(prev => ({...prev, [space.id]: true}));
+                    }
                   }} />
                 </div>
               </div>
 
-              {/* Space children */}
-              {space1Open && (
+              {openSpaces[space.id] && (
                 <div className="ml-6 pl-2 border-l border-[#333333] mt-1 space-y-0.5">
-                  {/* ── Pasta "Clientes Line" — expansível (Ajuste 6) ── */}
-                  <div>
-                    <div
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200 transition-colors group"
-                    >
-                      <button onClick={(e) => { e.stopPropagation(); setClientesFolderOpen(!clientesFolderOpen); }} className="p-0.5 hover:bg-white/10 rounded">
-                        {clientesFolderOpen ? (
-                          <ChevronDown className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                        ) : (
-                          <ChevronRight className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                        )}
-                      </button>
-                      <div className="flex items-center gap-2 flex-1" onClick={() => onViewChange('client-database')}>
-                        <FolderIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <span className={`text-sm font-medium ${currentView === 'client-database' ? 'text-white' : ''}`}>Clientes Line</span>
+                  {/* Pastas deste espaço */}
+                  {folders.filter(f => f.spaceId === space.id).map(folder => (
+                    <div key={folder.id}>
+                      <div 
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors group ${selectedLocation?.type === 'folder' && selectedLocation.id === folder.id ? 'bg-[#2b2b2b]' : 'hover:bg-white/5'}`}
+                        onClick={() => handleSelectLocation('folder', folder.id)}
+                      >
+                        <button onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id); }} className="p-0.5 hover:bg-white/10 rounded text-gray-400">
+                          {openFolders[folder.id] ? (
+                            <ChevronDown className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                          )}
+                        </button>
+                        <div className="flex items-center gap-2 flex-1">
+                          <FolderIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className={`text-sm font-medium ${selectedLocation?.type === 'folder' && selectedLocation.id === folder.id ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>{folder.name}</span>
+                        </div>
+                        <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                          <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={async (e) => { 
+                            e.stopPropagation(); 
+                            const nome = window.prompt('Nome da nova lista:');
+                            if (nome) {
+                              await addList({ spaceId: space.id, folderId: folder.id, name: nome, color: '#10b981' });
+                              showToast(`Lista "${nome}" criada com sucesso!`);
+                              setOpenFolders(prev => ({...prev, [folder.id]: true}));
+                            }
+                          }} />
+                        </div>
                       </div>
-                      <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                        <MoreHorizontal className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); showToast('Configurações da Pasta'); }} />
-                        <Plus className="w-3 h-3 text-gray-400 hover:text-white" onClick={(e) => { 
-                          e.stopPropagation(); 
-                          const nome = window.prompt('Nome da nova lista:');
-                          if (nome) showToast(`Lista "${nome}" criada com sucesso!`);
-                        }} />
-                      </div>
-                    </div>
 
-                    {/* ── Listas de clientes dentro da pasta ── */}
-                    {clientesFolderOpen && (
-                      <div className="ml-5 pl-2 border-l border-[#2a2a2a] mt-0.5 space-y-0.5">
-                        {filteredClients.length === 0 && (
-                          <div className="px-2 py-2 text-[11px] text-gray-600 italic">
-                            Nenhum cliente encontrado
-                          </div>
-                        )}
-                        {filteredClients.map(client => (
-                          <button
-                            key={client.id}
-                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left ${
-                              currentView === 'tasks'
-                                ? 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                                : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                            }`}
-                            onClick={() => {
-                              // Ajuste 5: navega para tasks E abre detalhes do cliente
-                              onViewChange('tasks');
-                              if (onOpenClientDetails) {
-                                onOpenClientDetails(client);
-                              }
-                            }}
-                          >
-                            <List className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                            <span className="text-sm font-medium truncate flex-1" title={client.name}>
-                              {client.name}
-                            </span>
-                            <span className="text-[10px] text-gray-600 font-medium flex-shrink-0">
-                              {tasks.length}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                      {openFolders[folder.id] && (
+                        <div className="ml-5 pl-2 border-l border-[#2a2a2a] mt-0.5 space-y-0.5">
+                          {/* Listas desta pasta */}
+                          {lists.filter(l => l.folderId === folder.id).map(list => (
+                            <button
+                              key={list.id}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left ${selectedLocation?.type === 'list' && selectedLocation.id === list.id ? 'bg-[#2b2b2b] text-white' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectLocation('list', list.id);
+                              }}
+                            >
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: list.color || '#3b82f6' }} />
+                              <span className="text-sm font-medium truncate flex-1">{list.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Listas soltas no espaço (sem pasta) */}
+                  {lists.filter(l => l.spaceId === space.id && !l.folderId).map(list => (
+                    <button
+                      key={list.id}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left ${selectedLocation?.type === 'list' && selectedLocation.id === list.id ? 'bg-[#2b2b2b] text-white' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectLocation('list', list.id);
+                      }}
+                    >
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: list.color || '#3b82f6' }} />
+                      <span className="text-sm font-medium truncate flex-1">{list.name}</span>
+                    </button>
+                  ))}
+                  
                 </div>
               )}
             </div>
-          )}
-
-          {/* ─── Space 2: Equipe ──────────────────────────────────────── */}
-          {/* Ajuste 6: removido o botão "Clientes" — não faz sentido aqui */}
-          <div className="mt-2">
-            <div
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#2b2b2b] cursor-pointer group transition-colors"
-              onClick={() => setSpace2Open(!space2Open)}
-            >
-              {space2Open ? (
-                <ChevronDown className="w-3 h-3 text-gray-500" />
-              ) : (
-                <ChevronRight className="w-3 h-3 text-gray-500" />
-              )}
-              <div className="w-5 h-5 rounded bg-red-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">E</div>
-              <span className="text-sm font-medium text-gray-200">Espaço da equipe</span>
-            </div>
-            {space2Open && (
-              <div className="ml-6 pl-2 border-l border-[#333333] mt-1 space-y-0.5">
-                {/* "Tarefas" que navega para tasks view */}
-                <button
-                  onClick={() => onViewChange('tasks')}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                    (currentView === 'tasks' || currentView === 'board' || currentView === 'calendar') ? 'bg-[#2b2b2b] text-white' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                  }`}
-                >
-                  <FolderIcon className="w-4 h-4 text-orange-400" />
-                  <span className="text-sm font-medium">Projetos</span>
-                  {tasks.length > 0 && <span className="ml-auto text-[10px] text-gray-500">{tasks.length}</span>}
-                </button>
-                {/* Ajuste 7: DNA dos Clientes */}
-                <button
-                  onClick={() => onViewChange('dna-clientes')}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                    currentView === 'dna-clientes' ? 'bg-[#2b2b2b] text-white' : 'text-gray-400 hover:bg-[#2b2b2b] hover:text-gray-200'
-                  }`}
-                >
-                  <Dna className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span className="text-sm font-medium">DNA dos Clientes</span>
-                </button>
-              </div>
-            )}
-          </div>
-
+          ))}
         </div>
       </div>
       <ToastContainer />

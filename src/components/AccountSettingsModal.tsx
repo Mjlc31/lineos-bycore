@@ -46,7 +46,7 @@ const StyledInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
 
 // ─── Tab: Perfil ─────────────────────────────────────────────────────────────
 const TabPerfil = ({ showToast }: { showToast: (msg: string) => void }) => {
-  const { profile } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const [form, setForm] = useState({ fullName: profile?.fullName || '', email: profile?.email || '', phone: '', jobTitle: '', bio: '' });
   const [isSaving, setIsSaving] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -54,11 +54,9 @@ const TabPerfil = ({ showToast }: { showToast: (msg: string) => void }) => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 700));
-    if (supabase && profile) {
-      await supabase.from('profiles').update({ full_name: form.fullName }).eq('id', profile.id);
-    }
+    const { error } = await updateProfile({ fullName: form.fullName });
     setIsSaving(false);
+    if (error) return showToast('Erro ao salvar: ' + error);
     showToast('Perfil atualizado com sucesso!');
   };
 
@@ -101,11 +99,22 @@ const TabPerfil = ({ showToast }: { showToast: (msg: string) => void }) => {
 
 // ─── Tab: Segurança ───────────────────────────────────────────────────────────
 const TabSeguranca = ({ showToast }: { showToast: (msg: string) => void }) => {
+  const { profile, updateProfile } = useAuth();
   const [form, setForm] = useState({ current: '', newPass: '', confirm: '' });
   const [show, setShow] = useState({ current: false, newPass: false, confirm: false });
   const [isSaving, setIsSaving] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(profile?.twoFactorEnabled || false);
   type Fkey = keyof typeof form;
+
+  const handleToggle2FA = async (v: boolean) => {
+    setTwoFactor(v);
+    const { error } = await updateProfile({ twoFactorEnabled: v });
+    if (error) {
+      setTwoFactor(!v);
+      return showToast('Erro ao atualizar 2FA: ' + error);
+    }
+    showToast(v ? '2FA ativado com sucesso!' : '2FA desativado.');
+  };
 
   const handleChangePass = async () => {
     if (!form.newPass) return showToast('Preencha a nova senha.');
@@ -157,7 +166,7 @@ const TabSeguranca = ({ showToast }: { showToast: (msg: string) => void }) => {
               <p className="text-xs text-gray-500">Adiciona camada extra de segurança</p>
             </div>
           </div>
-          <Toggle value={twoFactor} onChange={v => { setTwoFactor(v); showToast(v ? '2FA ativado (em breve)' : '2FA desativado'); }} />
+          <Toggle value={twoFactor} onChange={handleToggle2FA} />
         </div>
       </div>
       <div className="border-t border-white/[0.06] pt-6">

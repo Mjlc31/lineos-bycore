@@ -1,3 +1,33 @@
+export type TaskSpace = {
+  id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+};
+
+export type TaskFolder = {
+  id: string;
+  spaceId: string;
+  name: string;
+};
+
+export type TaskList = {
+  id: string;
+  spaceId: string;
+  folderId?: string | null;
+  name: string;
+  color?: string;
+};
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  role: 'ADMIN' | 'EQUIPE' | 'CLIENTE';
+  twoFactorEnabled?: boolean;
+};
+
 export type Status = {
   id: string;
   name: string;
@@ -58,6 +88,22 @@ export type Automation = {
   isActive: boolean;
 };
 
+// ─── Custom Fields ───────────────────────────────────────────────────────────────
+export type CustomFieldType = 'text' | 'number' | 'date' | 'dropdown' | 'checkbox';
+
+export type CustomFieldOption = {
+  id: string;
+  label: string;
+  color: string;
+};
+
+export type CustomFieldDefinition = {
+  id: string;
+  name: string;
+  type: CustomFieldType;
+  options?: CustomFieldOption[]; // Apenas para o tipo dropdown
+};
+
 // ─── Task ──────────────────────────────────────────────────────────────────────
 export type TaskSubtask = {
   id: string;
@@ -70,6 +116,7 @@ export type Task = {
   name: string;
   description?: string;
   statusId: string;
+  listId?: string | null;
   assignees: string[]; // avatar URLs
   dueDate?: string;
   priority: Priority;
@@ -81,6 +128,7 @@ export type Task = {
   subtasks?: TaskSubtask[];
   timeSpent?: number; // em segundos
   isTimerRunning?: boolean;
+  customFields?: Record<string, any>;
   createdAt?: string;
   completedAt?: string;
 };

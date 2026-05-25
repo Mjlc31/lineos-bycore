@@ -37,6 +37,7 @@ const DroppableColumn = ({ id, children, isOver }: any) => {
 };
 
 const TaskCardContent = ({ task, isOverlay = false }: { task: Task, isOverlay?: boolean }) => {
+  const { rhTeam } = useAppContext();
   const prio = priorityConfig[task.priority] || priorityConfig.None;
   return (
     <>
@@ -101,19 +102,28 @@ const TaskCardContent = ({ task, isOverlay = false }: { task: Task, isOverlay?: 
           )}
         </div>
         <div className="flex -space-x-1.5">
-          {(task.assignees || []).slice(0, 3).map((avatar, i) => (
-            <img
-              key={i}
-              src={avatar}
-              alt="Assignee"
-              className="w-6 h-6 rounded-full border-2 border-[#141414] shadow-sm hover:scale-110 hover:z-10 transition-transform cursor-pointer"
-            />
-          ))}
-          {(task.assignees?.length || 0) > 3 && (
-            <div className="w-6 h-6 rounded-full border-2 border-[#141414] bg-white/10 flex items-center justify-center text-[9px] font-bold text-white z-0">
-              +{(task.assignees?.length || 0) - 3}
-            </div>
-          )}
+          {(() => {
+            const validAssignees = (task.assignees || []).filter(av => 
+              rhTeam.some(rh => (rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`) === av)
+            );
+            return (
+              <>
+                {validAssignees.slice(0, 3).map((avatar, i) => (
+                  <img
+                    key={i}
+                    src={avatar}
+                    alt="Assignee"
+                    className="w-6 h-6 rounded-full object-cover border-2 border-[#141414] shadow-sm hover:scale-110 hover:z-10 transition-transform cursor-pointer"
+                  />
+                ))}
+                {validAssignees.length > 3 && (
+                  <div className="w-6 h-6 rounded-full border-2 border-[#141414] bg-white/10 flex items-center justify-center text-[9px] font-bold text-white z-0">
+                    +{validAssignees.length - 3}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </>
@@ -154,7 +164,7 @@ interface BoardViewProps {
 }
 
 const BoardView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'status' }: BoardViewProps) => {
-  const { tasks, setTasks, taskStatuses, addTask, updateTask } = useAppContext();
+  const { tasks, setTasks, taskStatuses, addTask, updateTask, rhTeam } = useAppContext();
   const [newTaskName, setNewTaskName] = useState('');
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -176,13 +186,17 @@ const BoardView = ({ filteredTasks, searchQuery, filterPriority, groupBy = 'stat
         t.assignees.forEach(a => avatars.add(a));
       }
     });
-    return Array.from(avatars).map((avatar, idx) => ({
-      id: avatar,
-      name: `Responsável ${idx + 1}`,
-      color: '#3b82f6',
-      avatar
-    }));
-  }, [tasks]);
+    
+    return rhTeam
+      .filter(rh => {
+        const uAvatar = rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`;
+        return avatars.has(uAvatar);
+      })
+      .map(rh => {
+        const uAvatar = rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`;
+        return { id: uAvatar, name: rh.name, color: '#3b82f6', avatar: uAvatar };
+      });
+  }, [tasks, rhTeam]);
 
   const groups = groupBy === 'assignee' 
     ? [...assigneesGroups, { id: 'unassigned', name: 'Não atribuído', color: '#6b7280', avatar: '' }]

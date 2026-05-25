@@ -7,7 +7,7 @@ import {
   Play, Square, ListTodo, Circle
 } from 'lucide-react';
 import { Task, Priority, TaskComment, TaskAttachment } from '../../types';
-import { useAppContext, SYSTEM_USERS } from '../../context/AppContext';
+import { useAppContext } from '../../context/AppContext';
 import { RichTextEditor } from './RichTextEditor';
 import useEscapeKey from '../../hooks/useEscapeKey';
 import { useToast } from '../Toast';
@@ -47,7 +47,7 @@ const AttachmentIcon = ({ type }: { type: string }) => {
 
 // ─── TaskModal ────────────────────────────────────────────────────────────────
 export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onRelatedTaskClick }) => {
-  const { updateTask, addComment, addAttachment, removeAttachment, taskStatuses, tasks, addTask } = useAppContext();
+  const { updateTask, addComment, addAttachment, removeAttachment, taskStatuses, tasks, addTask, customFieldDefinitions, rhTeam } = useAppContext();
   const { showToast, ToastContainer } = useToast();
   useEscapeKey(onClose);
 
@@ -173,10 +173,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onR
 
   const toggleAssignee = (avatar: string) => {
     const current = task.assignees || [];
-    const next = current.includes(avatar)
+    const newAssignees = current.includes(avatar)
       ? current.filter(a => a !== avatar)
       : [...current, avatar];
-    updateTask(task.id, { assignees: next });
+    updateTask(task.id, { assignees: newAssignees });
   };
 
   const addRelatedTask = (relId: string) => {
@@ -767,14 +767,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onR
                   <MetaItem label="Responsáveis" icon={<Users className="w-3.5 h-3.5" />}>
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-1 flex-wrap">
-                        {SYSTEM_USERS.filter(u => task.assignees?.includes(u.avatar)).map(u => (
-                          <div key={u.id} className="relative group/avatar">
-                            <img src={u.avatar} alt={u.name} className="w-7 h-7 rounded-full border-2 border-[#1a1a1a]" />
-                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#111] text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
-                              {u.name}
-                            </div>
-                          </div>
-                        ))}
+                        {rhTeam
+                          .filter(u => task.assignees?.includes(u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=3b82f6&color=fff`))
+                          .map(u => {
+                            const uAvatar = u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=3b82f6&color=fff`;
+                            return (
+                              <div key={u.id} className="relative group/avatar">
+                                <img src={uAvatar} alt={u.name} className="w-7 h-7 rounded-full object-cover border-2 border-[#1a1a1a]" />
+                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#111] text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
+                                  {u.name}
+                                </div>
+                              </div>
+                            );
+                          })}
                         <div className="relative">
                           <button
                             onClick={() => setShowAssigneeMenu(!showAssigneeMenu)}
@@ -788,19 +793,22 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onR
                               animate={{ opacity: 1, y: 0 }}
                               className="absolute left-0 top-full mt-1 bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl z-50 w-44 py-1"
                             >
-                              {SYSTEM_USERS.map(u => (
-                                <button
-                                  key={u.id}
-                                  onClick={() => toggleAssignee(u.avatar)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-white/5 transition-colors"
-                                >
-                                  <img src={u.avatar} alt={u.name} className="w-5 h-5 rounded-full" />
-                                  {u.name}
-                                  {task.assignees?.includes(u.avatar) && (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />
-                                  )}
-                                </button>
-                              ))}
+                              {rhTeam.map(u => {
+                                const uAvatar = u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=3b82f6&color=fff`;
+                                return (
+                                  <button
+                                    key={u.id}
+                                    onClick={() => toggleAssignee(uAvatar)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-white/5 transition-colors"
+                                  >
+                                    <img src={uAvatar} alt={u.name} className="w-5 h-5 rounded-full object-cover" />
+                                    {u.name}
+                                    {task.assignees?.includes(uAvatar) && (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />
+                                    )}
+                                  </button>
+                                );
+                              })}
                             </motion.div>
                           )}
                         </div>
@@ -819,6 +827,38 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onR
                     </button>
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                   </MetaItem>
+
+                  {/* Custom Fields Dinâmicos */}
+                  {customFieldDefinitions?.length > 0 && customFieldDefinitions.map(cf => {
+                    const val = task.customFields?.[cf.id] ?? '';
+                    return (
+                      <MetaItem key={cf.id} label={cf.name} icon={<FileText className="w-3.5 h-3.5" />}>
+                        {cf.type === 'text' || cf.type === 'number' ? (
+                          <input 
+                            type={cf.type === 'number' ? 'number' : 'text'}
+                            value={val}
+                            onChange={e => {
+                              const updatedFields = { ...(task.customFields || {}), [cf.id]: e.target.value };
+                              updateTask(task.id, { customFields: updatedFields });
+                            }}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-sm text-gray-300 outline-none focus:border-primary/50"
+                          />
+                        ) : cf.type === 'date' ? (
+                          <input 
+                            type="date"
+                            value={val}
+                            onChange={e => {
+                              const updatedFields = { ...(task.customFields || {}), [cf.id]: e.target.value };
+                              updateTask(task.id, { customFields: updatedFields });
+                            }}
+                            className="bg-transparent text-sm text-gray-300 outline-none cursor-pointer [color-scheme:dark]"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-500">{val}</div>
+                        )}
+                      </MetaItem>
+                    );
+                  })}
 
                   {/* Linha separadora */}
                   <div className="border-t border-white/[0.06]" />

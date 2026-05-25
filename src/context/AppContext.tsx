@@ -18,6 +18,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {
   Task, Lead, Transaction, ContentItem, Meeting, Client, Status, ClientStatus,
   TaskComment, TaskAttachment, Automation, CrmColumn, LeadActivity, LeadTask, ContentStatus,
+  CustomFieldDefinition, TaskSpace, TaskFolder, TaskList
 } from '../types';
 import { useTasks } from '../hooks/useTasks';
 import { useLeads } from '../hooks/useLeads';
@@ -26,14 +27,12 @@ import { useTransactions } from '../hooks/useTransactions';
 import { useClients } from '../hooks/useClients';
 import { useMeetings } from '../hooks/useMeetings';
 import { useAuth } from './AuthContext';
+import { useRh } from '../hooks/useRh';
+import { RhProfile } from '../services/rhService';
 
-// ─── Usuários mock do sistema (mantidos para compatibilidade de UI) ────────────
-export const SYSTEM_USERS = [
-  { id: 'u1', name: 'Arthur', avatar: 'https://i.pravatar.cc/150?img=11' },
-  { id: 'u2', name: 'Lucas',  avatar: 'https://i.pravatar.cc/150?img=33' },
-  { id: 'u3', name: 'Camila', avatar: 'https://i.pravatar.cc/150?img=47' },
-  { id: 'u4', name: 'Rafael', avatar: 'https://i.pravatar.cc/150?img=52' },
-];
+// ─── Usuários mock do sistema (removidos em favor do DB) ────────────────────
+// Removido export SYSTEM_USERS daqui. Usar `systemUsers` do context!
+import { useSystemUsers, SystemUser } from '../hooks/useSystemUsers';
 
 // ─── Interface pública (100% compatível com versão anterior) ──────────────────
 interface AppContextType {
@@ -63,6 +62,8 @@ interface AppContextType {
   crmColumns: CrmColumn[];
   automations: Automation[];
   setAutomations: React.Dispatch<React.SetStateAction<Automation[]>>;
+  customFieldDefinitions: CustomFieldDefinition[];
+  setCustomFieldDefinitions: React.Dispatch<React.SetStateAction<CustomFieldDefinition[]>>;
 
   // Loading states
   isTasksLoading: boolean;
@@ -76,8 +77,22 @@ interface AppContextType {
   addAttachment: (taskId: string, attachment: Omit<TaskAttachment, 'id' | 'uploadedAt'>) => void;
   removeAttachment: (taskId: string, attachmentId: string) => void;
 
-  // Status Actions
+  // Status & Custom Fields Actions
   addTaskStatus: (status: Omit<Status, 'id'>) => void;
+  addCustomFieldDefinition: (def: Omit<CustomFieldDefinition, 'id'>) => Promise<void>;
+  updateCustomFieldDefinition: (id: string, updates: Partial<CustomFieldDefinition>) => Promise<void>;
+  deleteCustomFieldDefinition: (id: string) => Promise<void>;
+
+  // Hierarchy
+  spaces: TaskSpace[];
+  folders: TaskFolder[];
+  lists: TaskList[];
+  addSpace: (space: Omit<TaskSpace, 'id'>) => Promise<void>;
+  removeSpace: (id: string) => Promise<void>;
+  addFolder: (folder: Omit<TaskFolder, 'id'>) => Promise<void>;
+  removeFolder: (id: string) => Promise<void>;
+  addList: (list: Omit<TaskList, 'id'>) => Promise<void>;
+  removeList: (id: string) => Promise<void>;
 
   // Client Actions
   addClient: (client: Omit<Client, 'id'>) => void;
@@ -104,6 +119,14 @@ interface AppContextType {
   // Others
   addMeeting: (meeting: Omit<Meeting, 'id'>) => void;
   toggleVideoWatched: (videoId: string) => void;
+  
+  // System Users
+  systemUsers: SystemUser[];
+  isSystemUsersLoading: boolean;
+
+  // RH / Equipe
+  rhTeam: RhProfile[];
+  isRhLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -118,6 +141,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const transactionsHook = useTransactions();
   const clientsHook = useClients();
   const meetingsHook = useMeetings();
+  const systemUsersHook = useSystemUsers();
+  const rhHook = useRh();
 
   // ─── Academy – watched videos (config por usuário, localStorage) ──────────
   const [watchedVideos, setWatchedVideos] = useState<string[]>(() => {
@@ -181,6 +206,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTaskStatuses: tasksHook.setTaskStatuses,
       automations: tasksHook.automations,
       setAutomations: tasksHook.setAutomations,
+      customFieldDefinitions: tasksHook.customFieldDefinitions,
+      setCustomFieldDefinitions: tasksHook.setCustomFieldDefinitions,
       isTasksLoading: tasksHook.isLoading,
 
       // Leads + CRM
@@ -223,6 +250,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAttachment: tasksHook.addAttachment,
       removeAttachment: tasksHook.removeAttachment,
       addTaskStatus: tasksHook.addTaskStatus,
+      addCustomFieldDefinition: tasksHook.addCustomFieldDefinition,
+      updateCustomFieldDefinition: tasksHook.updateCustomFieldDefinition,
+      deleteCustomFieldDefinition: tasksHook.deleteCustomFieldDefinition,
+
+      // Hierarchy
+      spaces: tasksHook.spaces,
+      folders: tasksHook.folders,
+      lists: tasksHook.lists,
+      addSpace: tasksHook.addSpace,
+      removeSpace: tasksHook.removeSpace,
+      addFolder: tasksHook.addFolder,
+      removeFolder: tasksHook.removeFolder,
+      addList: tasksHook.addList,
+      removeList: tasksHook.removeList,
 
       // Client Actions
       addClient: clientsHook.addClient,
@@ -249,6 +290,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Others
       addMeeting: meetingsHook.addMeeting,
       toggleVideoWatched,
+
+      // System Users
+      systemUsers: systemUsersHook.systemUsers,
+      isSystemUsersLoading: systemUsersHook.isLoading,
+
+      // RH / Equipe
+      rhTeam: rhHook.team,
+      isRhLoading: rhHook.isLoading,
+
     }}>
       {children}
     </AppContext.Provider>

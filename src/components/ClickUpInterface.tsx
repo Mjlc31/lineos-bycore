@@ -9,7 +9,7 @@ import CalendarView from './CalendarView';
 import ClientBoardView from './ClientBoardView';
 import SettingsModal from './SettingsModal';
 import TaskDashboard from './TaskDashboard';
-import { ViewType, Client } from '../types';
+import { ViewType, Client, TaskSpace, TaskFolder, TaskList } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { Modal } from './ui/Modal';
 import { ContentDetailModal } from './ContentDetailModal';
@@ -18,8 +18,9 @@ import { ClientDetailModal } from './ClientDetailModal';
 import { CreateTaskModal } from './ui/CreateTaskModal';
 
 const ClickUpInterface = () => {
-  const { tasks, setTasks, addTask, taskStatuses, clients, addClient, clientStatuses, updateClient } = useAppContext();
+  const { tasks, setTasks, addTask, taskStatuses, clients, addClient, clientStatuses, updateClient, lists } = useAppContext();
   const [currentView, setCurrentView] = useState<ViewType>('overview');
+  const [selectedLocation, setSelectedLocation] = useState<{ type: 'space' | 'folder' | 'list', id: string } | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,9 +69,22 @@ const ClickUpInterface = () => {
     setNewClientName('');
   };
 
-  // Filter tasks based on search + priority
+  // Filter tasks based on search + priority + location
   const filteredTasks = useMemo(() => {
     let result = tasks;
+    if (selectedLocation) {
+      if (selectedLocation.type === 'list') {
+        result = result.filter(t => t.listId === selectedLocation.id);
+      } else if (selectedLocation.type === 'folder') {
+        const folderLists = lists?.filter(l => l.folderId === selectedLocation.id) || [];
+        const listIds = folderLists.map(l => l.id);
+        result = result.filter(t => t.listId && listIds.includes(t.listId));
+      } else if (selectedLocation.type === 'space') {
+        const spaceLists = lists?.filter(l => l.spaceId === selectedLocation.id) || [];
+        const listIds = spaceLists.map(l => l.id);
+        result = result.filter(t => t.listId && listIds.includes(t.listId));
+      }
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(t => t.name.toLowerCase().includes(q));
@@ -79,7 +93,7 @@ const ClickUpInterface = () => {
       result = result.filter(t => t.priority === filterPriority);
     }
     return result;
-  }, [tasks, searchQuery, filterPriority]);
+  }, [tasks, searchQuery, filterPriority, selectedLocation, lists]);
 
   // Filter clients based on search
   const filteredClients = useMemo(() => {
@@ -94,7 +108,13 @@ const ClickUpInterface = () => {
 
   return (
     <div className="flex h-full w-full font-sans overflow-hidden selection:bg-primary/30" style={{ background: 'var(--surface-1)', color: 'var(--text-secondary)' }}>
-      <Sidebar currentView={currentView} onViewChange={setCurrentView} onOpenClientDetails={setSelectedClientDetails} />
+      <Sidebar 
+        currentView={currentView} 
+        onViewChange={setCurrentView} 
+        onOpenClientDetails={setSelectedClientDetails}
+        selectedLocation={selectedLocation}
+        onSelectLocation={setSelectedLocation}
+      />
       <div className="flex-1 flex flex-col min-w-0 bg-[#141414]">
         <TopBar
           currentView={currentView}
@@ -120,6 +140,7 @@ const ClickUpInterface = () => {
               filterPriority={filterPriority}
               groupBy={groupBy}
               showClosed={showClosed}
+              selectedLocation={selectedLocation}
             />
           )}
           {(currentView === 'clients' || currentView === 'client-database') && (
@@ -169,7 +190,7 @@ const ClickUpInterface = () => {
       )}
 
       {/* Nova Tarefa — modal completo */}
-      {showAddModal && <CreateTaskModal onClose={() => setShowAddModal(false)} />}
+      {showAddModal && <CreateTaskModal onClose={() => setShowAddModal(false)} initialListId={selectedLocation?.type === 'list' ? selectedLocation.id : undefined} />}
 
       {/* Add Client Modal */}
       <Modal isOpen={showAddClientModal} onClose={() => setShowAddClientModal(false)} title="Novo Cliente">

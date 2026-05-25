@@ -5,7 +5,7 @@ import {
   ListTodo, Clock, GripVertical, MessageSquare, User, Circle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAppContext, SYSTEM_USERS } from '../context/AppContext';
+import { useAppContext } from '../context/AppContext';
 import { useToast } from './Toast';
 import { Task } from '../types';
 import { TaskModal } from './ui/TaskModal';
@@ -16,6 +16,7 @@ interface ListViewProps {
   filterPriority: string | null;
   groupBy?: 'status' | 'assignee';
   showClosed?: boolean;
+  selectedLocation?: { type: 'space' | 'folder' | 'list', id: string } | null;
 }
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; flag: string }> = {
@@ -54,9 +55,14 @@ const ListView = ({
   filterPriority,
   groupBy = 'status',
   showClosed = true,
+  selectedLocation,
 }: ListViewProps) => {
-  const { tasks, setTasks, taskStatuses, addTask, deleteTask, updateTask, addTaskStatus } = useAppContext();
+  const { tasks, setTasks, taskStatuses, addTask, deleteTask, updateTask, addTaskStatus, customFieldDefinitions, addCustomFieldDefinition, spaces, folders, lists, rhTeam } = useAppContext();
   const { showToast, ToastContainer } = useToast();
+
+  const [addingField, setAddingField] = useState(false);
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldType, setNewFieldType] = useState<'text'|'number'|'date'|'dropdown'>('text');
 
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
   const [addingToStatus, setAddingToStatus] = useState<string | null>(null);
@@ -108,11 +114,15 @@ const ListView = ({
   const handleAddTask = useCallback((statusId: string) => {
     const name = (newTaskInputs[statusId] || '').trim();
     if (!name) { setAddingToStatus(null); return; }
-    addTask({ name, statusId, assignees: [], priority: 'Normal' as any });
+    
+    // Assign listId if viewing a specific list
+    const listId = selectedLocation?.type === 'list' ? selectedLocation.id : undefined;
+
+    addTask({ name, statusId, listId, assignees: [], priority: 'Normal' as any });
     setNewTaskInputs(prev => ({ ...prev, [statusId]: '' }));
     setAddingToStatus(null);
     setTimeout(() => showToast('Tarefa criada!'), 0);
-  }, [newTaskInputs, addTask, showToast]);
+  }, [newTaskInputs, addTask, showToast, selectedLocation]);
 
   const handleDeleteTask = useCallback((taskId: string, taskName: string) => {
     const snapshot = tasks.find(t => t.id === taskId);
@@ -164,8 +174,17 @@ const ListView = ({
   const assigneesGroups = useMemo(() => {
     const avatars = new Set<string>();
     tasks.forEach(t => t.assignees.forEach(a => avatars.add(a)));
-    return Array.from(avatars).map((avatar, idx) => ({ id: avatar, name: `Responsável ${idx+1}`, color: '#3b82f6', avatar }));
-  }, [tasks]);
+    
+    return rhTeam
+      .filter(rh => {
+        const uAvatar = rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`;
+        return avatars.has(uAvatar);
+      })
+      .map(rh => {
+        const uAvatar = rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`;
+        return { id: uAvatar, name: rh.name, color: '#3b82f6', avatar: uAvatar };
+      });
+  }, [tasks, rhTeam]);
 
   const groups = groupBy === 'assignee'
     ? [...assigneesGroups, { id: 'unassigned', name: 'Não atribuído', color: '#6b7280', avatar: '' }]
@@ -181,6 +200,69 @@ const ListView = ({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#1a1a1f] overflow-hidden">
+      {/* Breadcrumbs Top Bar */}
+      <div className="px-4 py-3 flex items-center gap-2 border-b border-[#2e2e35] bg-[#1a1a1f] shrink-0 text-sm">
+        <span className="text-gray-400">LINE OS Workspace</span>
+        {selectedLocation && (() => {
+          if (selectedLocation.type === 'list') {
+            const list = lists.find(l => l.id === selectedLocation.id);
+            const folder = list?.folderId ? folders.find(f => f.id === list.folderId) : null;
+            const space = spaces.find(s => s.id === list?.spaceId);
+            return (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                <span className="text-gray-400">{space?.name || 'Space'}</span>
+                {folder && (
+                  <>
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                    <span className="text-gray-400">{folder.name}</span>
+                  </>
+                )}
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                <span className="text-white font-medium flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: list?.color || '#3b82f6' }} />
+                  {list?.name}
+                </span>
+              </>
+            );
+          } else if (selectedLocation.type === 'folder') {
+            const folder = folders.find(f => f.id === selectedLocation.id);
+            const space = spaces.find(s => s.id === folder?.spaceId);
+            return (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                <span className="text-gray-400">{space?.name || 'Space'}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                <span className="text-white font-medium flex items-center gap-1.5">
+                  <FolderIcon className="w-4 h-4 text-gray-400" />
+                  {folder?.name}
+                </span>
+              </>
+            );
+          } else if (selectedLocation.type === 'space') {
+            const space = spaces.find(s => s.id === selectedLocation.id);
+            return (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                <span className="text-white font-medium flex items-center gap-1.5">
+                  <div className="w-4 h-4 rounded text-[9px] flex items-center justify-center bg-gray-700 text-white">
+                    {space?.icon || space?.name[0]}
+                  </div>
+                  {space?.name}
+                </span>
+              </>
+            );
+          }
+          return null;
+        })()}
+        {!selectedLocation && (
+          <>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+            <span className="text-white font-medium">Tudo (Everything)</span>
+          </>
+        )}
+      </div>
+
       {/* Sticky Column Headers */}
       <div className="sticky top-0 z-20 bg-[#1a1a1f] border-b border-[#2e2e35] flex items-center text-xs font-medium text-gray-500 select-none">
         <div className="w-8 flex-shrink-0" />
@@ -192,6 +274,35 @@ const ListView = ({
         <div className="w-[110px] px-2 py-2.5 flex-shrink-0">Prioridade</div>
         <div className="w-[120px] px-2 py-2.5 flex-shrink-0">Status</div>
         <div className="w-[80px] px-2 py-2.5 flex-shrink-0 text-center">Coment.</div>
+        {customFieldDefinitions.map(cf => (
+          <div key={cf.id} className="w-[120px] px-2 py-2.5 flex-shrink-0 truncate font-semibold" title={cf.name}>{cf.name}</div>
+        ))}
+        <div className="w-10 flex-shrink-0 flex items-center justify-center relative">
+           <button onClick={() => setAddingField(!addingField)} className="hover:text-white hover:bg-white/10 p-1 rounded transition-colors"><Plus className="w-4 h-4" /></button>
+           <AnimatePresence>
+             {addingField && (
+               <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                 className="absolute top-full right-0 mt-2 bg-[#1e1e2a] border border-white/10 rounded-xl shadow-2xl z-50 w-56 p-3 flex flex-col gap-2"
+               >
+                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Novo Campo</div>
+                 <input type="text" placeholder="Nome do Campo" value={newFieldName} onChange={e => setNewFieldName(e.target.value)} className="bg-black/20 border border-white/10 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-primary/50" />
+                 <select value={newFieldType} onChange={e => setNewFieldType(e.target.value as any)} className="bg-black/20 border border-white/10 rounded px-2 py-1.5 text-xs text-white outline-none">
+                   <option value="text">Texto</option>
+                   <option value="number">Número</option>
+                   <option value="date">Data</option>
+                 </select>
+                 <button className="bg-primary hover:bg-primary/80 text-white rounded py-1.5 text-xs font-bold mt-1" onClick={() => {
+                   if(newFieldName.trim()){
+                     addCustomFieldDefinition({ name: newFieldName.trim(), type: newFieldType });
+                     setAddingField(false);
+                     setNewFieldName('');
+                     showToast('Campo adicionado');
+                   }
+                 }}>Criar</button>
+               </motion.div>
+             )}
+           </AnimatePresence>
+        </div>
         <div className="w-10 flex-shrink-0" />
       </div>
 
@@ -268,17 +379,18 @@ const ListView = ({
                 <AnimatePresence initial={false}>
                   {!isCollapsed && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+                      animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
+                      exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
                       transition={{ duration: 0.15 }}
-                      className="overflow-hidden"
+                      className="relative"
                     >
                       {groupTasks.map(task => (
                         <TaskRow
                           key={task.id}
                           task={task}
                           taskStatuses={taskStatuses}
+                          customFieldDefinitions={customFieldDefinitions}
                           editingTaskId={editingTaskId}
                           editingName={editingName}
                           setEditingName={setEditingName}
@@ -408,6 +520,7 @@ const ListView = ({
 interface TaskRowProps {
   task: Task;
   taskStatuses: any[];
+  customFieldDefinitions: any[];
   editingTaskId: string | null;
   editingName: string;
   setEditingName: (v: string) => void;
@@ -436,12 +549,13 @@ interface TaskRowProps {
 }
 
 const TaskRow = ({
-  task, taskStatuses, editingTaskId, editingName, setEditingName,
+  task, taskStatuses, customFieldDefinitions, editingTaskId, editingName, setEditingName,
   openMenuId, moveMenuTaskId, openPriorityId, openStatusId, openAssigneeId, openDateId,
   menuRef, onOpenTask, onStartEditName, onSaveEditName, onUpdateTask,
   onDeleteTask, onDuplicateTask, onMoveTask, onToggleMenu, onToggleMoveMenu,
   onTogglePriority, onToggleStatus, onToggleAssignee, onToggleDate, onDragStart, closeAllDropdowns,
 }: TaskRowProps) => {
+  const { rhTeam } = useAppContext();
   const status = taskStatuses.find(s => s.id === task.statusId);
   const prio = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.None;
   const isEditing = editingTaskId === task.id;
@@ -532,23 +646,28 @@ const TaskRow = ({
           className="flex items-center gap-1 cursor-pointer"
           onClick={onToggleAssignee}
         >
-          {task.assignees.length > 0 ? (
-            <>
-              {task.assignees.slice(0, 3).map((av, i) => (
-                <img key={i} src={av} alt="Assignee"
-                  className="w-5 h-5 rounded-full border border-[#1a1a1f] -ml-1 first:ml-0 hover:scale-110 transition-transform" />
-              ))}
-              {task.assignees.length > 3 && (
-                <span className="text-[10px] text-gray-400 bg-white/10 rounded-full w-5 h-5 flex items-center justify-center -ml-1">
-                  +{task.assignees.length - 3}
-                </span>
-              )}
-            </>
-          ) : (
-            <div className="opacity-0 group-hover/row:opacity-100 transition-opacity w-5 h-5 rounded-full border border-dashed border-gray-600 flex items-center justify-center text-gray-600">
-              <User className="w-3 h-3" />
-            </div>
-          )}
+          {(() => {
+            const validAssignees = task.assignees.filter(av => 
+              rhTeam.some(rh => (rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`) === av)
+            );
+            return validAssignees.length > 0 ? (
+              <>
+                {validAssignees.slice(0, 3).map((av, i) => (
+                  <img key={i} src={av} alt="Assignee"
+                    className="w-5 h-5 rounded-full object-cover border border-[#1a1a1f] -ml-1 first:ml-0 hover:scale-110 transition-transform" />
+                ))}
+                {validAssignees.length > 3 && (
+                  <span className="text-[10px] text-gray-400 bg-white/10 rounded-full w-5 h-5 flex items-center justify-center -ml-1">
+                    +{validAssignees.length - 3}
+                  </span>
+                )}
+              </>
+            ) : (
+              <div className="opacity-0 group-hover/row:opacity-100 transition-opacity w-5 h-5 rounded-full border border-dashed border-gray-600 flex items-center justify-center text-gray-600">
+                <User className="w-3 h-3" />
+              </div>
+            );
+          })()}
         </div>
         <AnimatePresence>
           {isAssigneeOpen && (
@@ -557,19 +676,20 @@ const TaskRow = ({
               data-dropdown
             >
               <div className="px-3 py-1 text-[10px] text-gray-500 font-bold uppercase tracking-wide">Responsáveis</div>
-              {SYSTEM_USERS.map(user => {
-                const assigned = task.assignees.includes(user.avatar);
+              {rhTeam.map(user => {
+                const uAvatar = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=3b82f6&color=fff`;
+                const assigned = task.assignees.includes(uAvatar);
                 return (
                   <button key={user.id}
                     className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition-colors ${assigned ? 'text-white bg-primary/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
                     onClick={() => {
                       const newAssignees = assigned
-                        ? task.assignees.filter(a => a !== user.avatar)
-                        : [...task.assignees, user.avatar];
+                        ? task.assignees.filter(a => a !== uAvatar)
+                        : [...task.assignees, uAvatar];
                       onUpdateTask({ assignees: newAssignees });
                     }}
                   >
-                    <img src={user.avatar} className="w-6 h-6 rounded-full" />
+                    <img src={uAvatar} className="w-6 h-6 rounded-full object-cover" />
                     <span>{user.name}</span>
                     {assigned && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
                   </button>
@@ -701,6 +821,39 @@ const TaskRow = ({
           )}
         </button>
       </div>
+
+      {/* Custom Fields */}
+      {customFieldDefinitions.map(cf => {
+        const val = task.customFields?.[cf.id] ?? '';
+        return (
+          <div key={cf.id} className="w-[120px] flex-shrink-0 px-2 flex items-center">
+            {cf.type === 'text' || cf.type === 'number' ? (
+              <input 
+                type={cf.type === 'number' ? 'number' : 'text'}
+                className="w-full bg-transparent border border-transparent hover:border-white/10 rounded px-1.5 py-1 text-[11px] text-gray-300 outline-none focus:border-primary/50 focus:bg-white/[0.02] transition-colors"
+                value={val}
+                placeholder="-"
+                onChange={e => {
+                  const updatedFields = { ...(task.customFields || {}), [cf.id]: e.target.value };
+                  onUpdateTask({ customFields: updatedFields });
+                }}
+              />
+            ) : cf.type === 'date' ? (
+              <input
+                type="date"
+                className="w-full bg-transparent border border-transparent hover:border-white/10 rounded px-1.5 py-1 text-[11px] text-gray-300 outline-none focus:border-primary/50 focus:bg-white/[0.02] transition-colors"
+                value={val}
+                onChange={e => {
+                  const updatedFields = { ...(task.customFields || {}), [cf.id]: e.target.value };
+                  onUpdateTask({ customFields: updatedFields });
+                }}
+              />
+            ) : (
+               <div className="text-[11px] text-gray-500">{val}</div>
+            )}
+          </div>
+        );
+      })}
 
       {/* Context Menu */}
       <div className="w-10 flex-shrink-0 flex items-center justify-center relative"

@@ -8,37 +8,20 @@ import { supabase } from '../lib/supabase';
 import {
   fetchTasks, createTask, updateTask, deleteTask,
   fetchTaskStatuses, createTaskStatus, addComment as addTaskCommentService,
+  fetchCustomFieldDefinitions, createCustomFieldDefinition, updateCustomFieldDefinition as updateCustomFieldService, deleteCustomFieldDefinition as deleteCustomFieldService,
+  fetchSpaces, createSpace, deleteSpace as deleteSpaceService,
+  fetchFolders, createFolder, deleteFolder as deleteFolderService,
+  fetchLists, createList, deleteList as deleteListService
 } from '../services';
 import type {
-  Task, Status, Automation, TaskComment, TaskAttachment,
+  Task, Status, Automation, TaskComment, TaskAttachment, CustomFieldDefinition, TaskSpace, TaskFolder, TaskList
 } from '../types';
 
-// Automações padrão (config de UI — mantidas no hook/localStorage)
-const DEFAULT_AUTOMATIONS: Automation[] = [
-  {
-    id: 'auto-1',
-    name: 'Pendente → Revisão: trocar responsável',
-    trigger: { type: 'status_change', fromStatusId: 's1', toStatusId: 's2' },
-    actions: [
-      { type: 'remove_assignee', assigneeId: 'u1' },
-      { type: 'add_assignee', assigneeId: 'u2', displayName: 'Lucas', avatar: 'https://i.pravatar.cc/150?img=33' },
-    ],
-    isActive: true,
-  },
-];
-
-function loadAutomations(): Automation[] {
-  try {
-    const saved = localStorage.getItem('line_os_automations');
-    return saved ? JSON.parse(saved) : DEFAULT_AUTOMATIONS;
-  } catch {
-    return DEFAULT_AUTOMATIONS;
-  }
-}
+// ... (rest of the code ...)
 
 export function useTasks(userFullName?: string, userAvatar?: string) {
   const queryClient = useQueryClient();
-  const [automations, setAutomations] = useState<Automation[]>(loadAutomations);
+  const [automations, setAutomations] = useState<Automation[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const { data: tasks = [], isLoading: isTasksLoading, isError: isTasksError } = useQuery({
@@ -51,7 +34,27 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
     queryFn: fetchTaskStatuses,
   });
 
-  const isLoading = isTasksLoading || isStatusesLoading;
+  const { data: spaces = [], isLoading: isSpacesLoading } = useQuery({
+    queryKey: ['spaces'],
+    queryFn: fetchSpaces,
+  });
+
+  const { data: folders = [], isLoading: isFoldersLoading } = useQuery({
+    queryKey: ['folders'],
+    queryFn: fetchFolders,
+  });
+
+  const { data: lists = [], isLoading: isListsLoading } = useQuery({
+    queryKey: ['lists'],
+    queryFn: fetchLists,
+  });
+
+  const { data: customFieldDefinitions = [], isLoading: isFieldsLoading } = useQuery({
+    queryKey: ['customFieldDefinitions'],
+    queryFn: fetchCustomFieldDefinitions,
+  });
+
+  const isLoading = isTasksLoading || isStatusesLoading || isFieldsLoading || isSpacesLoading || isFoldersLoading || isListsLoading;
 
   useEffect(() => {
     if (isTasksError) {
@@ -70,6 +73,34 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
 
   const setTaskStatuses = useCallback((updater: any) => {
     queryClient.setQueryData(['taskStatuses'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const setCustomFieldDefinitions = useCallback((updater: any) => {
+    queryClient.setQueryData(['customFieldDefinitions'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const setSpaces = useCallback((updater: any) => {
+    queryClient.setQueryData(['spaces'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const setFolders = useCallback((updater: any) => {
+    queryClient.setQueryData(['folders'], (prev: any) => {
+      const current = prev || [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const setLists = useCallback((updater: any) => {
+    queryClient.setQueryData(['lists'], (prev: any) => {
       const current = prev || [];
       return typeof updater === 'function' ? updater(current) : updater;
     });
@@ -271,10 +302,97 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
     }
   }, []);
 
+  // ─── Custom Field Actions ──────────────────────────────────────────────────
+  const addCustomFieldDefinition = useCallback(async (def: Omit<CustomFieldDefinition, 'id'>) => {
+    const tempId = `cf-${Date.now()}`;
+    const optimistic: CustomFieldDefinition = { ...def, id: tempId };
+    setCustomFieldDefinitions(prev => [...prev, optimistic]);
+
+    try {
+      const saved = await createCustomFieldDefinition({ ...def, id: tempId });
+      setCustomFieldDefinitions(prev => prev.map(f => f.id === tempId ? saved : f));
+    } catch (err) {
+      console.error('[useTasks] addCustomFieldDefinition falhou:', err);
+      setCustomFieldDefinitions(prev => prev.filter(f => f.id !== tempId));
+    }
+  }, []);
+
+  const updateCustomFieldDefinition = useCallback(async (id: string, updates: Partial<CustomFieldDefinition>) => {
+    setCustomFieldDefinitions(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+    try {
+      await updateCustomFieldService(id, updates);
+    } catch (err) {
+      console.error('[useTasks] updateCustomFieldDefinition falhou:', err);
+    }
+  }, []);
+
+  const deleteCustomFieldDefinition = useCallback(async (id: string) => {
+    setCustomFieldDefinitions(prev => prev.filter(f => f.id !== id));
+    try {
+      await deleteCustomFieldService(id);
+    } catch (err) {
+      console.error('[useTasks] deleteCustomFieldDefinition falhou:', err);
+    }
+  }, []);
+
+  // ─── Hierarchy Actions ──────────────────────────────────────────────────────
+  const addSpace = useCallback(async (space: Omit<TaskSpace, 'id'>) => {
+    const tempId = `sp-${Date.now()}`;
+    setSpaces(prev => [...prev, { ...space, id: tempId }]);
+    try {
+      const saved = await createSpace(space);
+      setSpaces(prev => prev.map(s => s.id === tempId ? saved : s));
+    } catch (err) {
+      console.error('[useTasks] addSpace falhou:', err);
+      setSpaces(prev => prev.filter(s => s.id !== tempId));
+    }
+  }, []);
+
+  const removeSpace = useCallback(async (id: string) => {
+    setSpaces(prev => prev.filter(s => s.id !== id));
+    try { await deleteSpaceService(id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addFolder = useCallback(async (folder: Omit<TaskFolder, 'id'>) => {
+    const tempId = `fd-${Date.now()}`;
+    setFolders(prev => [...prev, { ...folder, id: tempId }]);
+    try {
+      const saved = await createFolder(folder);
+      setFolders(prev => prev.map(f => f.id === tempId ? saved : f));
+    } catch (err) {
+      console.error('[useTasks] addFolder falhou:', err);
+      setFolders(prev => prev.filter(f => f.id !== tempId));
+    }
+  }, []);
+
+  const removeFolder = useCallback(async (id: string) => {
+    setFolders(prev => prev.filter(f => f.id !== id));
+    try { await deleteFolderService(id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addList = useCallback(async (list: Omit<TaskList, 'id'>) => {
+    const tempId = `ls-${Date.now()}`;
+    setLists(prev => [...prev, { ...list, id: tempId }]);
+    try {
+      const saved = await createList(list);
+      setLists(prev => prev.map(l => l.id === tempId ? saved : l));
+    } catch (err) {
+      console.error('[useTasks] addList falhou:', err);
+      setLists(prev => prev.filter(l => l.id !== tempId));
+    }
+  }, []);
+
+  const removeList = useCallback(async (id: string) => {
+    setLists(prev => prev.filter(l => l.id !== id));
+    try { await deleteListService(id); } catch (err) { console.error(err); }
+  }, []);
+
   return {
     tasks, setTasks,
     taskStatuses, setTaskStatuses,
     automations, setAutomations,
+    customFieldDefinitions, setCustomFieldDefinitions,
+    spaces, folders, lists,
     isLoading,
     error,
     // Actions
@@ -285,5 +403,11 @@ export function useTasks(userFullName?: string, userAvatar?: string) {
     addAttachment,
     removeAttachment,
     addTaskStatus,
+    addCustomFieldDefinition,
+    updateCustomFieldDefinition,
+    deleteCustomFieldDefinition,
+    addSpace, removeSpace,
+    addFolder, removeFolder,
+    addList, removeList,
   };
 }

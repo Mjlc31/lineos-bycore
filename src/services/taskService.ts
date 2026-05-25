@@ -3,15 +3,33 @@
  * Todas as funções são puras: sem state, sem efeitos colaterais.
  */
 import { supabase } from '../lib/supabase';
-import type { Task, Status, TaskComment, TaskAttachment, TaskSubtask } from '../types';
+import type { Task, Status, TaskComment, TaskAttachment, TaskSubtask, TaskSpace, TaskFolder, TaskList } from '../types';
 
 // ─── Mappers: DB Row → App Type ────────────────────────────────────────────────
+function mapRowToSpace(row: Record<string, unknown>): TaskSpace {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    iconText: row.icon_text as string | undefined,
+    color: row.color as string | undefined,
+  };
+}
+
+function mapRowToFolder(row: Record<string, unknown>): TaskFolder {
+  return {
+    id: row.id as string,
+    spaceId: row.space_id as string,
+    name: row.name as string,
+  };
+}
+
 function mapRowToTask(row: Record<string, unknown>): Task {
   return {
     id: row.id as string,
     name: row.name as string,
     description: row.description as string | undefined,
     statusId: row.status_id as string,
+    listId: row.list_id as string | undefined,
     assignees: (row.assignees as string[]) ?? [],
     dueDate: row.due_date as string | undefined,
     priority: row.priority as Task['priority'],
@@ -20,6 +38,7 @@ function mapRowToTask(row: Record<string, unknown>): Task {
     subtasks: (row.subtasks as TaskSubtask[]) ?? [],
     timeSpent: (row.time_spent as number) ?? 0,
     isTimerRunning: (row.is_timer_running as boolean) ?? false,
+    customFields: (row.custom_fields as Record<string, any>) ?? {},
     createdAt: row.created_at as string,
     completedAt: row.completed_at as string | undefined,
     comments: (row.task_comments as TaskComment[]) ?? [],
@@ -60,6 +79,101 @@ export async function createTaskStatus(status: Omit<Status, 'id'>): Promise<Stat
   return mapRowToStatus(data as Record<string, unknown>);
 }
 
+// ─── Hierarchy: Spaces, Folders, Lists ──────────────────────────────────────
+export async function fetchSpaces(): Promise<TaskSpace[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('spaces').select('*').order('created_at', { ascending: true });
+  if (error) throw new Error(`[taskService] fetchSpaces: ${error.message}`);
+  return (data ?? []).map(r => ({ id: r.id, name: r.name, color: r.color, icon: r.icon }));
+}
+
+export async function createSpace(space: Omit<TaskSpace, 'id'>): Promise<TaskSpace> {
+  if (!supabase) throw new Error('Supabase indisponível');
+  const { data, error } = await supabase.from('spaces').insert(space).select().single();
+  if (error) throw new Error(`[taskService] createSpace: ${error.message}`);
+  return { id: data.id, name: data.name, color: data.color, icon: data.icon };
+}
+
+export async function deleteSpace(id: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from('spaces').delete().eq('id', id);
+}
+
+export async function fetchFolders(): Promise<TaskFolder[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('folders').select('*').order('created_at', { ascending: true });
+  if (error) throw new Error(`[taskService] fetchFolders: ${error.message}`);
+  return (data ?? []).map(r => ({ id: r.id, spaceId: r.space_id, name: r.name }));
+}
+
+export async function createFolder(folder: Omit<TaskFolder, 'id'>): Promise<TaskFolder> {
+  if (!supabase) throw new Error('Supabase indisponível');
+  const { data, error } = await supabase.from('folders').insert({ space_id: folder.spaceId, name: folder.name }).select().single();
+  if (error) throw new Error(`[taskService] createFolder: ${error.message}`);
+  return { id: data.id, spaceId: data.space_id, name: data.name };
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from('folders').delete().eq('id', id);
+}
+
+export async function fetchLists(): Promise<TaskList[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('lists').select('*').order('created_at', { ascending: true });
+  if (error) throw new Error(`[taskService] fetchLists: ${error.message}`);
+  return (data ?? []).map(r => ({ id: r.id, spaceId: r.space_id, folderId: r.folder_id, name: r.name, color: r.color }));
+}
+
+export async function createList(list: Omit<TaskList, 'id'>): Promise<TaskList> {
+  if (!supabase) throw new Error('Supabase indisponível');
+  const { data, error } = await supabase.from('lists').insert({ space_id: list.spaceId, folder_id: list.folderId, name: list.name, color: list.color }).select().single();
+  if (error) throw new Error(`[taskService] createList: ${error.message}`);
+  return { id: data.id, spaceId: data.space_id, folderId: data.folder_id, name: data.name, color: data.color };
+}
+
+export async function deleteList(id: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from('lists').delete().eq('id', id);
+}
+
+// ─── Custom Field Definitions ────────────────────────────────────────────────
+export async function fetchCustomFieldDefinitions(): Promise<any[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('custom_field_definitions').select('*');
+  if (error) throw new Error(`[taskService] fetchCustomFieldDefinitions: ${error.message}`);
+  return data ?? [];
+}
+
+export async function createCustomFieldDefinition(def: any): Promise<any> {
+  if (!supabase) throw new Error('[taskService] Supabase não disponível');
+  const { data, error } = await supabase
+    .from('custom_field_definitions')
+    .insert({
+      id: def.id,
+      name: def.name,
+      type: def.type,
+      options: def.options ?? [],
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`[taskService] createCustomFieldDefinition: ${error.message}`);
+  return data;
+}
+
+export async function updateCustomFieldDefinition(id: string, patch: any): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from('custom_field_definitions').update(patch).eq('id', id);
+  if (error) throw new Error(`[taskService] updateCustomFieldDefinition: ${error.message}`);
+}
+
+export async function deleteCustomFieldDefinition(id: string): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from('custom_field_definitions').delete().eq('id', id);
+  if (error) throw new Error(`[taskService] deleteCustomFieldDefinition: ${error.message}`);
+}
+
 // ─── Task CRUD ────────────────────────────────────────────────────────────────
 export async function fetchTasks(): Promise<Task[]> {
   if (!supabase) return [];
@@ -81,6 +195,7 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'comments
       name: task.name,
       description: task.description,
       status_id: task.statusId,
+      list_id: task.listId,
       assignees: task.assignees,
       due_date: task.dueDate,
       priority: task.priority,
@@ -89,6 +204,7 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'comments
       subtasks: (task.subtasks ?? []) as Record<string, unknown>[],
       time_spent: task.timeSpent ?? 0,
       is_timer_running: task.isTimerRunning ?? false,
+      custom_fields: task.customFields ?? {},
       completed_at: task.completedAt,
     })
     .select()
@@ -105,6 +221,7 @@ export async function updateTask(id: string, patch: Partial<Task>): Promise<void
   if (patch.name !== undefined)         dbPatch.name = patch.name;
   if (patch.description !== undefined)  dbPatch.description = patch.description;
   if (patch.statusId !== undefined)     dbPatch.status_id = patch.statusId;
+  if (patch.listId !== undefined)       dbPatch.list_id = patch.listId;
   if (patch.assignees !== undefined)    dbPatch.assignees = patch.assignees;
   if (patch.dueDate !== undefined)      dbPatch.due_date = patch.dueDate;
   if (patch.priority !== undefined)     dbPatch.priority = patch.priority;
@@ -113,6 +230,7 @@ export async function updateTask(id: string, patch: Partial<Task>): Promise<void
   if (patch.subtasks !== undefined)     dbPatch.subtasks = patch.subtasks as Record<string, unknown>[];
   if (patch.timeSpent !== undefined)    dbPatch.time_spent = patch.timeSpent;
   if (patch.isTimerRunning !== undefined) dbPatch.is_timer_running = patch.isTimerRunning;
+  if (patch.customFields !== undefined) dbPatch.custom_fields = patch.customFields;
   if (patch.completedAt !== undefined)  dbPatch.completed_at = patch.completedAt;
 
   const { error } = await supabase.from('tasks').update(dbPatch).eq('id', id);

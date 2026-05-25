@@ -11,6 +11,7 @@ export interface UserProfile {
   fullName: string;
   avatarUrl: string | null;
   role: 'ADMIN' | 'EQUIPE' | 'CLIENTE';
+  twoFactorEnabled: boolean;
 }
 
 interface AuthContextType {
@@ -20,17 +21,19 @@ interface AuthContextType {
   isAuthLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function mapProfileRow(row: ProfileRow): UserProfile {
+function mapProfileRow(row: any): UserProfile {
   return {
     id: row.id,
     email: row.email,
     fullName: row.full_name ?? row.email.split('@')[0],
     avatarUrl: row.avatar_url,
     role: row.role,
+    twoFactorEnabled: row.two_factor_enabled ?? false,
   };
 }
 
@@ -113,8 +116,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('line_os_cached_role');
   };
 
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ error: string | null }> => {
+    if (!supabase || !user) return { error: 'Usuário não autenticado.' };
+
+    const dbUpdates: any = {};
+    if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
+    if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+    if (updates.twoFactorEnabled !== undefined) dbUpdates.two_factor_enabled = updates.twoFactorEnabled;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(dbUpdates)
+      .eq('id', user.id);
+
+    if (error) return { error: error.message };
+    
+    // Atualizar estado local
+    setProfile(prev => prev ? { ...prev, ...updates } : null);
+    return { error: null };
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user, profile, isAuthLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, isAuthLoading, signIn, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

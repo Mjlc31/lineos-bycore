@@ -17,23 +17,18 @@ const PRIORITIES: { value: Priority; label: string; color: string; icon: string 
   { value: 'None',   label: 'Nenhuma',  color: 'text-gray-600 bg-transparent',  icon: '—' },
 ];
 
-const TEAM_MEMBERS = [
-  { name: 'Arthur',  avatar: 'https://i.pravatar.cc/150?img=11' },
-  { name: 'Lucas',   avatar: 'https://i.pravatar.cc/150?img=33' },
-  { name: 'Camila',  avatar: 'https://i.pravatar.cc/150?img=44' },
-  { name: 'Rafael',  avatar: 'https://i.pravatar.cc/150?img=52' },
-  { name: 'Mariana', avatar: 'https://i.pravatar.cc/150?img=47' },
-];
+
 
 interface Props {
   onClose: () => void;
+  initialListId?: string;
 }
 
-export const CreateTaskModal = ({ onClose }: Props) => {
-  const { taskStatuses, addTask } = useAppContext();
+export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
+  const { taskStatuses, addTask, lists, spaces, folders, rhTeam } = useAppContext();
   useEscapeKey(onClose);
 
-  const [activeTab, setActiveTab] = useState<'tarefa' | 'doc' | 'lembrete' | 'quadro' | 'painel'>('doc');
+  const [activeTab, setActiveTab] = useState<'tarefa' | 'doc' | 'lembrete' | 'quadro' | 'painel'>('tarefa');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [statusId, setStatusId] = useState(taskStatuses[0]?.id || 's1');
@@ -41,13 +36,18 @@ export const CreateTaskModal = ({ onClose }: Props) => {
   const [dueDate, setDueDate] = useState('');
   const [assignees, setAssignees] = useState<string[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [selectedListId, setSelectedListId] = useState<string | undefined>(initialListId);
   
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showAssigneeMenu, setShowAssigneeMenu] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  const [showListMenu, setShowListMenu] = useState(false);
 
   const currentStatus = taskStatuses.find(s => s.id === statusId);
   const currentPriority = PRIORITIES.find(p => p.value === priority);
+  const currentList = lists.find(l => l.id === selectedListId);
+  const currentFolder = currentList?.folderId ? folders.find(f => f.id === currentList.folderId) : null;
+  const currentSpace = currentList ? spaces.find(s => s.id === currentList.spaceId) : null;
 
   const toggleAssignee = (avatar: string) => {
     setAssignees(prev => prev.includes(avatar) ? prev.filter(a => a !== avatar) : [...prev, avatar]);
@@ -60,9 +60,10 @@ export const CreateTaskModal = ({ onClose }: Props) => {
         name: name.trim(),
         description,
         statusId,
+        listId: selectedListId,
         priority,
         dueDate,
-        assignees: assignees.length > 0 ? assignees : ['https://i.pravatar.cc/150?img=11'],
+        assignees: assignees.length > 0 ? assignees : [],
         tags: [],
         relatedTaskIds: [],
         subtasks: [],
@@ -102,12 +103,52 @@ export const CreateTaskModal = ({ onClose }: Props) => {
 
         {/* Localização da Tarefa (Apenas para Tarefa) */}
         {activeTab === 'tarefa' && (
-          <div className="px-6 py-3 flex items-center gap-2 text-[11px] text-gray-400 font-medium bg-[#141414]">
-            <span className="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 rounded cursor-pointer transition-colors border border-transparent hover:border-white/10">
+          <div className="px-6 py-3 flex items-center gap-2 text-[11px] text-gray-400 font-medium bg-[#141414] relative border-b border-[#2b2b2b]">
+            <span 
+              onClick={() => setShowListMenu(!showListMenu)}
+              className="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 rounded cursor-pointer transition-colors border border-transparent hover:border-white/10"
+            >
               <Folder className="w-3.5 h-3.5 text-blue-400" />
-              Em: LINE OS / Workspace
+              {currentList ? (
+                <>Em: {currentSpace?.name}{currentFolder ? ` / ${currentFolder.name}` : ''} / <strong className="text-white ml-0.5">{currentList.name}</strong></>
+              ) : (
+                'Selecionar Lista...'
+              )}
+              <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-50" />
             </span>
-            <ChevronDown className="w-3.5 h-3.5 opacity-50 cursor-pointer" />
+
+            {/* List Selection Dropdown */}
+            {showListMenu && (
+              <div className="absolute top-full left-6 mt-1 bg-[#2b2b2b] border border-[#444] rounded-lg shadow-xl z-50 w-72 max-h-64 overflow-y-auto py-1">
+                <div className="px-3 py-2 text-[10px] text-gray-500 font-bold uppercase tracking-wide">Selecione uma lista</div>
+                <button
+                  onClick={() => { setSelectedListId(undefined); setShowListMenu(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/10 transition-colors text-left ${!selectedListId ? 'text-white bg-white/5' : 'text-gray-300'}`}
+                >
+                  <List className="w-3.5 h-3.5 text-gray-400" />
+                  Nenhuma lista (Tudo)
+                  {!selectedListId && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
+                </button>
+                {lists.map(list => {
+                  const s = spaces.find(sp => sp.id === list.spaceId);
+                  const f = list.folderId ? folders.find(fo => fo.id === list.folderId) : null;
+                  return (
+                    <button
+                      key={list.id}
+                      onClick={() => { setSelectedListId(list.id); setShowListMenu(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/10 transition-colors text-left ${selectedListId === list.id ? 'text-white bg-white/5' : 'text-gray-300'}`}
+                    >
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: list.color || '#3b82f6' }} />
+                      <div className="flex flex-col">
+                        <span>{list.name}</span>
+                        <span className="text-[9px] text-gray-500">{s?.name}{f ? ` / ${f.name}` : ''}</span>
+                      </div>
+                      {selectedListId === list.id && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -157,28 +198,40 @@ export const CreateTaskModal = ({ onClose }: Props) => {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-transparent hover:bg-white/5 hover:border-[#333] transition-colors text-xs font-medium text-gray-400"
                   >
                     {assignees.length === 0 ? (
-                      <><User className="w-3.5 h-3.5 border border-dashed rounded-full" /> Responsável</>
+                      <span className="flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-gray-600">
+                        <User className="w-3.5 h-3.5 text-gray-500" />
+                      </span>
                     ) : (
                       <div className="flex -space-x-1">
-                        {assignees.map(a => <img key={a} src={a} className="w-5 h-5 rounded-full border border-[#1e1e1e]" />)}
+                        {rhTeam
+                          .filter(u => assignees.includes(u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=3b82f6&color=fff`))
+                          .map(u => {
+                            const uAvatar = u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=3b82f6&color=fff`;
+                            return (
+                              <img key={u.id} src={uAvatar} alt={u.name} title={u.name} className="w-7 h-7 rounded-full object-cover border border-[#1a1a1a]" />
+                            );
+                          })}
                       </div>
                     )}
                   </button>
                   {showAssigneeMenu && (
                     <div className="absolute top-full left-0 mt-1 bg-[#2b2b2b] border border-[#444] rounded-lg shadow-xl z-50 w-48 py-1">
-                      {TEAM_MEMBERS.map(m => (
-                        <button
-                          key={m.name}
-                          onClick={() => toggleAssignee(m.avatar)}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <img src={m.avatar} className="w-5 h-5 rounded-full" />
-                            {m.name}
-                          </div>
-                          {assignees.includes(m.avatar) && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
-                        </button>
-                      ))}
+                      {rhTeam.map(u => {
+                        const uAvatar = u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=3b82f6&color=fff`;
+                        return (
+                          <button
+                            key={u.id}
+                            onClick={() => toggleAssignee(uAvatar)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-white/5 transition-colors"
+                          >
+                            <img src={uAvatar} alt={u.name} className="w-5 h-5 rounded-full object-cover" />
+                            {u.name}
+                            {assignees.includes(uAvatar) && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
