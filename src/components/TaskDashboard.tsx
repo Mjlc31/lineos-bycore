@@ -93,6 +93,7 @@ const TaskDashboard = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingWidget, setEditingWidget] = useState<string | null>(null);
   const [layout, setLayout] = useLocalStorage<any[]>('clickup-dashboard-layout-v2', DEFAULT_LAYOUT);
   
   // Apenas garantindo que o layout será carregado montado corretamente no grid
@@ -135,17 +136,6 @@ const TaskDashboard = () => {
 
     return { overdue: ov, today: td, next: nx, unscheduled: un, closedTasks: closed };
   }, [tasks, taskStatuses]);
-
-  const recentTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 5);
-  }, [tasks]);
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
-  }, []);
 
   const handleLayoutChange = (newLayout: any[]) => {
     setLayout(newLayout);
@@ -213,74 +203,8 @@ const TaskDashboard = () => {
     );
   };
 
-  const Section = ({ title, count, isExpanded, onToggle, tasks, emptyMessage }: any) => {
-    return (
-      <div className="flex flex-col">
-        <div 
-          className="flex items-center gap-2 px-2 py-2 hover:bg-white/[0.04] rounded-md cursor-pointer transition-colors group select-none"
-          onClick={onToggle}
-        >
-          <button className="text-gray-500 group-hover:text-gray-300 transition-colors">
-            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          </button>
-          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-200 transition-colors">
-            {title === 'Pendente' && <span className="w-3 h-3 border border-gray-400 rounded-full flex items-center justify-center opacity-50" />}
-            {title}
-          </div>
-          <span className="text-xs font-medium text-gray-500">{count}</span>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              {tasks.length === 0 ? (
-                <div className="py-4 px-8 text-xs text-gray-500 font-medium">
-                  {emptyMessage || "Nenhuma tarefa."}
-                </div>
-              ) : (
-                <div className="flex flex-col mb-4 pl-4 border-l-2 border-white/5 ml-3 mt-1">
-                  <div className="flex items-center py-2 px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-white/5">
-                    <div className="w-5 mr-3" />
-                    <div className="flex-1 pr-4">Nome</div>
-                    <div className="w-[80px] px-2">Prioridade</div>
-                    <div className="w-[90px] px-2 text-right">Data</div>
-                  </div>
-                  {tasks.map((task: Task) => (
-                    <TaskRow key={task.id} task={task} />
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  };
-
-  const TabButton = ({ active, onClick, children }: any) => (
-    <button 
-      onClick={onClick}
-      className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
-        active ? 'border-primary text-gray-100' : 'border-transparent text-gray-500 hover:text-gray-300'
-      }`}
-    >
-      {children}
-    </button>
-  );
-
-  const WidgetCard = ({ title, actionIcon, id, children }: any) => (
+  const WidgetCard = ({ title, id, children, hasSettings = false }: any) => (
     <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl overflow-hidden flex flex-col hover:border-[#3a3a3a] transition-colors h-full w-full group relative">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.02]">
-        <div className="flex items-center gap-2">
-          {/* Drag Handle */}
-          <div className="drag-handle cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 transition-colors p-1 -ml-2">
-            <GripVertical className="w-4 h-4" />
-          </div>
           <h3 className="text-sm font-bold text-gray-200">{title}</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -525,7 +449,7 @@ const TaskDashboard = () => {
         );
       case 'chart-team-performance':
         return (
-          <WidgetCard id={id} title="Desempenho da Equipe" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+          <WidgetCard id={id} title="Desempenho da Equipe" hasSettings={true}>
             <div className="h-full w-full p-4 pb-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={TEAM_DATA}>
@@ -541,7 +465,7 @@ const TaskDashboard = () => {
         );
       case 'chart-tasks-completion':
         return (
-          <WidgetCard id={id} title="Histórico de Entregas" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+          <WidgetCard id={id} title="Histórico de Entregas" hasSettings={true}>
             <div className="h-full w-full p-4 pb-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={COMPLETION_DATA}>
@@ -563,7 +487,7 @@ const TaskDashboard = () => {
         );
       case 'chart-priority-dist':
         return (
-          <WidgetCard id={id} title="Distribuição de Prioridades" actionIcon={<MoreHorizontal className="w-4 h-4" />}>
+          <WidgetCard id={id} title="Distribuição de Prioridades" hasSettings={true}>
             <div className="h-full w-full p-4 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
@@ -590,6 +514,15 @@ const TaskDashboard = () => {
     }
   };
 
+  const autoArrange = () => {
+    const newLayout = layout.map((item, index) => ({
+      ...item,
+      y: Math.floor(index / 2) * 2,
+      x: (index % 2) * 6
+    }));
+    setLayout(newLayout);
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-[#111111] overflow-y-auto custom-scrollbar text-white relative">
       {/* Header */}
@@ -597,12 +530,20 @@ const TaskDashboard = () => {
         <h1 className="text-[26px] font-extrabold text-white tracking-tight">
           {greeting}, {profile?.fullName?.split(' ')[0] || 'Arthur'}
         </h1>
-        <button 
-          onClick={() => setIsManageModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-md text-xs font-semibold text-gray-300 transition-colors"
-        >
-          <Settings className="w-3.5 h-3.5" /> Gerenciar cartões
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={autoArrange}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-md text-xs font-semibold text-gray-300 transition-colors"
+          >
+            <Layout className="w-3.5 h-3.5" /> Organizar Grid
+          </button>
+          <button 
+            onClick={() => setIsManageModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-md text-xs font-semibold text-gray-300 transition-colors"
+          >
+            <Settings className="w-3.5 h-3.5" /> Gerenciar cartões
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row px-8 pb-12 gap-6 w-full h-full">
