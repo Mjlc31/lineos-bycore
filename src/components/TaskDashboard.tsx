@@ -203,18 +203,35 @@ const TaskDashboard = () => {
     );
   };
 
-  const WidgetCard = ({ title, id, children, hasSettings = false }: any) => (
+  const WidgetCard = ({ title, actionIcon, id, children, hasSettings = false }: any) => (
     <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl overflow-hidden flex flex-col hover:border-[#3a3a3a] transition-colors h-full w-full group relative">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.02]">
+        <div className="flex items-center gap-2">
+          {/* Drag Handle */}
+          <div className="drag-handle cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 transition-colors p-1 -ml-2">
+            <GripVertical className="w-4 h-4" />
+          </div>
           <h3 className="text-sm font-bold text-gray-200">{title}</h3>
         </div>
         <div className="flex items-center gap-2">
+          {hasSettings && (
+            <button 
+              onMouseDown={(e) => e.stopPropagation()} 
+              onClick={() => setEditingWidget(id)}
+              className="text-gray-500 hover:text-white transition-colors p-1"
+              title="Configurações"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
           {actionIcon && <div className="text-gray-500 hover:text-gray-300 cursor-pointer">{actionIcon}</div>}
           <button 
+            onMouseDown={(e) => e.stopPropagation()} 
             onClick={() => removeWidget(id)}
             className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
             title="Remover Cartão"
           >
-            <ChevronDown className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -224,7 +241,35 @@ const TaskDashboard = () => {
     </div>
   );
 
+  const renderWidgetConfig = (id: string, title: string) => (
+    <WidgetCard id={id} title={`Configurar: ${title}`}>
+      <div className="p-6 flex flex-col h-full bg-[#161616]">
+        <h4 className="text-sm font-semibold text-white mb-4">Selecione os dados do gráfico</h4>
+        <select className="w-full bg-[#222] border border-[#333] text-gray-200 rounded-md p-2 text-sm focus:outline-none focus:border-primary mb-4">
+          <option>Todos os usuários (Geral)</option>
+          <option>Apenas minha equipe</option>
+          <option>Somente eu</option>
+        </select>
+        <div className="flex-1"></div>
+        <button 
+          onClick={() => setEditingWidget(null)}
+          className="w-full bg-primary hover:bg-primary/90 text-white rounded-md py-2 text-sm font-semibold transition-colors"
+        >
+          Salvar Configurações
+        </button>
+      </div>
+    </WidgetCard>
+  );
+
   const renderWidget = (id: string) => {
+    if (editingWidget === id && id.startsWith('chart-')) {
+      let title = "Gráfico";
+      if (id === 'chart-team-performance') title = "Desempenho da Equipe";
+      if (id === 'chart-tasks-completion') title = "Histórico de Entregas";
+      if (id === 'chart-priority-dist') title = "Distribuição de Prioridades";
+      return renderWidgetConfig(id, title);
+    }
+
     switch (id) {
       case 'assigned-to-me':
         return (
