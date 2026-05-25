@@ -705,7 +705,7 @@ const TaskDashboard = () => {
               isDraggable={true}
             >
               {layout.map(item => (
-                <div key={item.i} data-grid={{ ...item }}>
+                <div key={item.i} data-grid={{ ...item, resizeHandles: ['s', 'e', 'w', 'n'] }}>
                   {renderWidget(item.i)}
                 </div>
               ))}

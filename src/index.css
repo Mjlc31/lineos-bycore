@@ -178,13 +178,13 @@ select {
 /* ─── Resize Handles para react-grid-layout ────────────────────────── */
 .react-resizable-handle {
   position: absolute;
-  z-index: 100;
+  z-index: 9999;
   opacity: 0;
   transition: opacity 0.2s ease, background 0.2s ease;
 }
 
 .react-grid-item:hover .react-resizable-handle {
-  opacity: 0.5; /* Fica visível ao passar o mouse */
+  opacity: 0.3;
 }
 .react-resizable-handle:hover {
   opacity: 1 !important;
@@ -192,34 +192,37 @@ select {
 
 /* Lado Direito (E) */
 .react-resizable-handle-e {
-  top: 0; right: 0; bottom: 0; width: 10px;
-  cursor: e-resize;
-  background: linear-gradient(to left, rgba(255,255,255,0.1), transparent);
+  top: 0; right: 0; bottom: 0; width: 14px;
+  cursor: ew-resize;
+  background: linear-gradient(to left, rgba(255,255,255,0.4), transparent);
 }
 
 /* Lado Esquerdo (W) */
 .react-resizable-handle-w {
-  top: 0; left: 0; bottom: 0; width: 10px;
-  cursor: w-resize;
-  background: linear-gradient(to right, rgba(255,255,255,0.1), transparent);
+  top: 0; left: 0; bottom: 0; width: 14px;
+  cursor: ew-resize;
+  background: linear-gradient(to right, rgba(255,255,255,0.4), transparent);
 }
 
 /* Embaixo (S) */
 .react-resizable-handle-s {
-  bottom: 0; left: 0; right: 0; height: 10px;
-  cursor: s-resize;
-  background: linear-gradient(to top, rgba(255,255,255,0.1), transparent);
+  bottom: 0; left: 0; right: 0; height: 14px;
+  cursor: ns-resize;
+  background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
 }
 
 /* Em cima (N) */
 .react-resizable-handle-n {
-  top: 0; left: 0; right: 0; height: 10px;
-  cursor: n-resize;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+  top: 0; left: 0; right: 0; height: 14px;
+  cursor: ns-resize;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
 }
 
 /* Remove a diagonal nativa (SE) caso ainda seja gerada */
-.react-resizable-handle-se {
+.react-resizable-handle-se,
+.react-resizable-handle-sw,
+.react-resizable-handle-nw,
+.react-resizable-handle-ne {
   display: none !important;
 }
 
