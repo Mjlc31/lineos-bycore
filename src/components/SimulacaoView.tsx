@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Music, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Music, Share2, ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SimulacaoItem {
@@ -14,6 +14,7 @@ interface SimulacaoItem {
 export default function SimulacaoView() {
   const [items, setItems] = useState<SimulacaoItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,7 +123,15 @@ export default function SimulacaoView() {
 
               <div className="w-full bg-black flex-1 flex items-center justify-center overflow-hidden relative">
                 {currentItem.t === 'video' ? (
-                  <video src={currentItem.u} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                  <div className="relative w-full h-full group">
+                    <video src={currentItem.u} className="w-full h-full object-cover" autoPlay muted={isMuted} loop playsInline />
+                    <button 
+                      onClick={() => setIsMuted(!isMuted)}
+                      className="absolute bottom-4 right-4 w-8 h-8 bg-black/60 rounded-full flex items-center justify-center text-white backdrop-blur-sm z-30 transition-all hover:bg-black/80 shadow-md"
+                    >
+                      {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 ) : currentItem.t === 'image' || !currentItem.t ? (
                   <img src={currentItem.u} className="w-full h-full object-cover" alt="Post preview" />
                 ) : (
@@ -158,7 +167,15 @@ export default function SimulacaoView() {
             <>
               <div className="absolute inset-0 bg-black z-0">
                 {currentItem.t === 'video' ? (
-                  <video src={currentItem.u} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                  <div className="relative w-full h-full group">
+                    <video src={currentItem.u} className="w-full h-full object-cover" autoPlay muted={isMuted} loop playsInline />
+                    <button 
+                      onClick={() => setIsMuted(!isMuted)}
+                      className="absolute top-20 right-4 w-10 h-10 bg-black/40 rounded-full flex items-center justify-center text-white backdrop-blur-md z-30 transition-all hover:bg-black/60 shadow-md"
+                    >
+                      {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    </button>
+                  </div>
                 ) : currentItem.t === 'image' || !currentItem.t ? (
                   <img src={currentItem.u} className="w-full h-full object-cover" alt="Post preview" />
                 ) : (
