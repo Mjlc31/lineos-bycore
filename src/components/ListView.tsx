@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   ChevronDown, ChevronRight, Plus, Flag, Calendar as CalendarIcon,
   MoreHorizontal, CheckCircle2, Trash2, Edit3, ArrowRightLeft, Copy,
-  ListTodo, Clock, GripVertical, MessageSquare, User, Circle
+  ListTodo, Clock, GripVertical, MessageSquare, User, Circle, Folder as FolderIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';

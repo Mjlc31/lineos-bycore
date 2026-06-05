@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 import { Client } from '../types';
 import { ClientDetailModal } from './ClientDetailModal';
+import { useToast } from './Toast';
 
 interface ClientBoardViewProps {
   filteredClients: Client[];
@@ -13,6 +14,7 @@ interface ClientBoardViewProps {
 
 const ClientBoardView = ({ filteredClients, searchQuery, onOpenAddModal }: ClientBoardViewProps) => {
   const { setClients, clientStatuses, addClient, updateClient } = useAppContext();
+  const { showToast, ToastContainer } = useToast();
   const [newClientName, setNewClientName] = useState('');
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const dragItem = useRef<string | null>(null);
@@ -98,7 +100,10 @@ const ClientBoardView = ({ filteredClients, searchQuery, onOpenAddModal }: Clien
                 >
                   <Plus className="w-4 h-4" />
                 </button>
-                <button className="p-1 text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded transition-colors">
+                <button 
+                  onClick={() => showToast('Recurso em desenvolvimento')}
+                  className="p-1 text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded transition-colors"
+                >
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               </div>
@@ -208,6 +213,7 @@ const ClientBoardView = ({ filteredClients, searchQuery, onOpenAddModal }: Clien
           setSelectedClient(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
         }}
       />
+      <ToastContainer />
     </div>
   );
 };

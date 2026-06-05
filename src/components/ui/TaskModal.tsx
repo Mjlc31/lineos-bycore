@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Task, Priority, TaskComment, TaskAttachment } from '../../types';
 import { useAppContext } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { RichTextEditor } from './RichTextEditor';
 import useEscapeKey from '../../hooks/useEscapeKey';
 import { useToast } from '../Toast';
@@ -48,6 +49,7 @@ const AttachmentIcon = ({ type }: { type: string }) => {
 // ─── TaskModal ────────────────────────────────────────────────────────────────
 export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onRelatedTaskClick }) => {
   const { updateTask, addComment, addAttachment, removeAttachment, taskStatuses, tasks, addTask, customFieldDefinitions, rhTeam } = useAppContext();
+  const { profile } = useAuth();
   const { showToast, ToastContainer } = useToast();
   useEscapeKey(onClose);
 
@@ -638,7 +640,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onR
                 {activeTab === 'comments' && (
                   <div className="px-6 py-4 border-t border-white/[0.06] flex-shrink-0">
                     <div className="flex items-end gap-3">
-                      <img src="https://i.pravatar.cc/150?img=11" alt="me" className="w-8 h-8 rounded-full flex-shrink-0 mb-0.5" />
+                      <img 
+                        src={profile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.fullName || 'U')}&background=E31837&color=fff`} 
+                        alt="me" 
+                        className="w-8 h-8 rounded-full flex-shrink-0 mb-0.5 object-cover" 
+                      />
                       <div className="flex-1 relative">
                         <textarea
                           value={commentText}

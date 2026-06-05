@@ -188,8 +188,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (tab: any) => void }) => {
             <div className="flex-1 flex flex-col">
               {contentData.length > 0 ? (
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-28 h-28 flex-shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="w-28 h-28 flex-shrink-0 min-w-0">
+                    <ResponsiveContainer width="99%" height="100%">
                       <PieChart>
                         <Pie data={contentData} innerRadius={32} outerRadius={48} dataKey="value" stroke="none" paddingAngle={4}>
                           {contentData.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
@@ -248,8 +248,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (tab: any) => void }) => {
             </div>
 
             {/* Mini bar chart */}
-            <div className="h-32 mb-4 -mx-1">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-32 mb-4 -mx-1 min-w-0">
+              <ResponsiveContainer width="99%" height="100%">
                 <BarChart data={crmBarData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis dataKey="name" tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false} />

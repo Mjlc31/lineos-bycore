@@ -50,7 +50,7 @@ export async function createRhProfile(profile: Omit<RhProfile, 'id'>): Promise<R
   }).select().single();
 
   if (error) throw new Error(`[rhService] createRhProfile: ${error.message}`);
-  const r = data;
+  const r = data as any;
   return {
     id: r.id,
     name: r.name,
@@ -95,7 +95,7 @@ export async function updateRhProfile(id: string, updates: Partial<Omit<RhProfil
     .single();
 
   if (error) throw new Error(`[rhService] updateRhProfile: ${error.message}`);
-  const r = data;
+  const r = data as any;
   return {
     id: r.id,
     name: r.name,

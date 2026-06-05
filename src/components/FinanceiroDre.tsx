@@ -11,7 +11,8 @@ import { Modal } from './ui/Modal';
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 const toDisplayDate = (iso: string) => {
   if (!iso) return '';
-  const [y, m, d] = iso.split('-');
+  const datePart = iso.split('T')[0];
+  const [y, m, d] = datePart.split('-');
   return `${d}/${m}/${y}`;
 };
 
@@ -48,7 +49,8 @@ const buildChartData = (transactions: Transaction[]) => {
 
   transactions.forEach((t) => {
     if (!t.date) return;
-    const [year, month] = t.date.split('-');
+    const datePart = t.date.split('T')[0];
+    const [year, month] = datePart.split('-');
     if (!year || !month) return;
     const key = `${year}-${month}`;
     if (!map[key]) map[key] = { receitas: 0, despesas: 0 };
@@ -338,11 +340,11 @@ const FinanceiroDre = () => {
 
         {/* Chart + Transactions */}
         <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 bg-[#141414] border border-[#222] rounded-xl p-6">
+          <div className="col-span-2 bg-[#141414] border border-[#222] rounded-xl p-6 min-w-0">
             <h3 className="text-sm font-semibold mb-6">DRE — Evolução Mensal</h3>
             {chartData.length > 0 ? (
-              <div className="h-[min(40vh,400px)] min-h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[min(40vh,400px)] min-h-[300px] w-full min-w-0">
+                <ResponsiveContainer width="99%" height="100%">
                   <BarChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                     <XAxis

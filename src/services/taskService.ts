@@ -10,7 +10,7 @@ function mapRowToSpace(row: Record<string, unknown>): TaskSpace {
   return {
     id: row.id as string,
     name: row.name as string,
-    iconText: row.icon_text as string | undefined,
+    icon: row.icon as string | undefined,
     color: row.color as string | undefined,
   };
 }
@@ -91,7 +91,8 @@ export async function createSpace(space: Omit<TaskSpace, 'id'>): Promise<TaskSpa
   if (!supabase) throw new Error('Supabase indisponível');
   const { data, error } = await supabase.from('spaces').insert(space).select().single();
   if (error) throw new Error(`[taskService] createSpace: ${error.message}`);
-  return { id: data.id, name: data.name, color: data.color, icon: data.icon };
+  const r = data as any;
+  return { id: r.id, name: r.name, color: r.color, icon: r.icon };
 }
 
 export async function deleteSpace(id: string): Promise<void> {
@@ -110,7 +111,8 @@ export async function createFolder(folder: Omit<TaskFolder, 'id'>): Promise<Task
   if (!supabase) throw new Error('Supabase indisponível');
   const { data, error } = await supabase.from('folders').insert({ space_id: folder.spaceId, name: folder.name }).select().single();
   if (error) throw new Error(`[taskService] createFolder: ${error.message}`);
-  return { id: data.id, spaceId: data.space_id, name: data.name };
+  const r = data as any;
+  return { id: r.id, spaceId: r.space_id, name: r.name };
 }
 
 export async function deleteFolder(id: string): Promise<void> {
@@ -129,7 +131,8 @@ export async function createList(list: Omit<TaskList, 'id'>): Promise<TaskList> 
   if (!supabase) throw new Error('Supabase indisponível');
   const { data, error } = await supabase.from('lists').insert({ space_id: list.spaceId, folder_id: list.folderId, name: list.name, color: list.color }).select().single();
   if (error) throw new Error(`[taskService] createList: ${error.message}`);
-  return { id: data.id, spaceId: data.space_id, folderId: data.folder_id, name: data.name, color: data.color };
+  const r = data as any;
+  return { id: r.id, spaceId: r.space_id, folderId: r.folder_id, name: r.name, color: r.color };
 }
 
 export async function deleteList(id: string): Promise<void> {

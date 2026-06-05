@@ -43,6 +43,8 @@ Abaixo estão listadas, módulo a módulo, as tabelas que agora estruturam o LIN
 | `task_activities` | Logs de atividades e automações do card (mudanças de status, transferências). |
 | `task_attachments` | Referências aos arquivos anexados do bucket `media`. |
 | `task_subtasks` | Sub-itens (checklists) de cada tarefa com status booleano `completed`. |
+| `automations` | Registro de automações e gatilhos da equipe do Gestor. |
+| `spaces`, `folders`, `lists` | Hierarquia de organização de projetos. |
 
 ### 🏢 Módulo: Clientes (Contas)
 > Centralização das informações contratuais e gerenciais dos clientes.
@@ -61,8 +63,8 @@ Abaixo estão listadas, módulo a módulo, as tabelas que agora estruturam o LIN
 | `crm_columns` | As etapas do funil de vendas (Leads, Reunião Agendada, Ganho, etc). |
 | `crm_leads` | Ficha do lead comercial. Inclui campos de `contact_name`, `email`, `value` (Valor financeiro), `source` e informações de empresa (CNPJ/Endereço). |
 | `crm_lead_tags` | Tags de segmentação para remarketing. |
-| `crm_lead_activities`| Histórico do vendedor com o lead (Notas, Ligações, E-mails). |
-| `crm_lead_tasks` | Lembretes de follow-up (Tarefas exclusivas da equipe de vendas atreladas ao lead). |
+| `lead_activities`| Histórico do vendedor com o lead (Notas, Ligações, E-mails). |
+| `lead_tasks` | Lembretes de follow-up (Tarefas exclusivas da equipe de vendas atreladas ao lead). |
 
 ### 💰 Módulo: Financeiro
 > Gestão de receitas, despesas e DRE.
@@ -102,15 +104,11 @@ Abaixo estão listadas, módulo a módulo, as tabelas que agora estruturam o LIN
 
 ## 3. Extração e Geração de Tipos (TypeScript)
 
-Para que o Front-End do sistema consuma esses dados do banco de forma segura, com autocompletar inteligente e verificações de tipo rigorosas no padrão Vale do Silício, o seguinte arquivo foi gerado e está salvo em sua máquina:
-
-**📄 Arquivo Extraído:**
-`src/lib/database.types.ts`
-
-Este arquivo é um reflexo 1:1 exato do banco de dados no Supabase.
+Para que o Front-End do sistema consuma esses dados do banco de forma segura, com autocompletar inteligente e verificações de tipo rigorosas no padrão Vale do Silício, o arquivo `src/lib/database.types.ts` foi gerado via MCP Supabase e o `supabase.ts` foi refatorado para utilizar estritamente o tipo estático.
 
 ---
 
 > [!NOTE]
 > **Sobre o Design do Banco de Dados:**
-> Ao longo das criações via SQL, foram incluídas deleções em cascata (`ON DELETE CASCADE`) na maior parte das tabelas pivot e tabelas filho. Isso garante que, se um `Task` for deletado, seus anexos, comentários e responsáveis vinculados também sejam deletados para manter o banco limpo e livre de "dados órfãos".
+> Ao longo das criações via SQL, foram incluídas deleções em cascata (`ON DELETE CASCADE`) na maior parte das tabelas pivot e tabelas filho. Isso garante que, se um `Task` ou `Client` for deletado, seus anexos, comentários e responsáveis vinculados também sejam deletados para manter o banco limpo e livre de "dados órfãos".
+> **Atualização Recente:** O patch V9 foi executado via Supabase MCP e as tabelas `task_activities`, `automations`, `content_feedbacks`, `content_groups`, `event_types`, `scheduled_events`, `spaces`, `folders` e `lists` foram devidamente provisionadas e seguradas via *Row Level Security* (RLS).

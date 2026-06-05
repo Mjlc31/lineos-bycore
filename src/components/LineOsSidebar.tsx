@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   CheckSquare,
@@ -33,7 +34,6 @@ export type LineOsTab =
 
 interface Props {
   activeTab: LineOsTab;
-  setActiveTab: (tab: LineOsTab) => void;
 }
 
 const navItems = [
@@ -47,7 +47,8 @@ const navItems = [
   { id: 'academy', label: 'Academy', icon: GraduationCap, section: 'tools' },
 ] as const;
 
-const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
+const LineOsSidebar = ({ activeTab }: Props) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useLocalStorage('lineos-sidebar-expanded', true);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const { profile, signOut } = useAuth();
@@ -114,7 +115,7 @@ const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as LineOsTab)}
+                onClick={() => navigate(item.id === 'dashboard' ? '/' : `/${item.id}`)}
                 title={!isExpanded ? item.label : undefined}
                 className={`relative flex items-center gap-2.5 h-9 rounded-lg transition-all duration-150 group
                   ${isExpanded ? 'px-2.5' : 'justify-center px-0'}
@@ -169,7 +170,7 @@ const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as LineOsTab)}
+                onClick={() => navigate(`/${item.id}`)}
                 title={!isExpanded ? item.label : undefined}
                 className={`relative flex items-center gap-2.5 h-9 rounded-lg transition-all duration-150 group
                   ${isExpanded ? 'px-2.5' : 'justify-center px-0'}
@@ -215,7 +216,7 @@ const LineOsSidebar = ({ activeTab, setActiveTab }: Props) => {
         {isAdmin && (
           <>
             <button
-              onClick={() => setActiveTab('usuarios')}
+              onClick={() => navigate('/usuarios')}
               title={!isExpanded ? 'Usuários' : undefined}
               className={`relative flex items-center gap-2.5 h-9 rounded-lg transition-all duration-150
                 ${isExpanded ? 'px-2.5' : 'justify-center px-0'}

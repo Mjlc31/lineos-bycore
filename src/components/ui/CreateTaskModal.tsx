@@ -8,6 +8,7 @@ import {
 import { useAppContext } from '../../context/AppContext';
 import { Priority, Tag } from '../../types';
 import useEscapeKey from '../../hooks/useEscapeKey';
+import { useToast } from '../Toast';
 
 const PRIORITIES: { value: Priority; label: string; color: string; icon: string }[] = [
   { value: 'Urgent', label: 'Urgente',  color: 'text-red-400 bg-red-500/10',    icon: '🔴' },
@@ -53,6 +54,8 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
     setAssignees(prev => prev.includes(avatar) ? prev.filter(a => a !== avatar) : [...prev, avatar]);
   };
 
+  const { showToast } = useToast();
+
   const handleSubmit = () => {
     if (activeTab === 'tarefa') {
       if (!name.trim()) return;
@@ -70,10 +73,10 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
         timeSpent: 0,
         isTimerRunning: false,
       });
+      showToast('Tarefa criada com sucesso!');
       onClose();
     } else {
-      // Mock para as outras abas
-      console.log('Criado:', activeTab, name);
+      showToast(`Recurso "${activeTab}" em desenvolvimento.`);
       onClose();
     }
   };
@@ -274,10 +277,10 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
 
                 <div className="w-px h-4 bg-[#333] mx-1" />
 
-                <button className="flex items-center gap-1.5 px-2 py-1.5 text-gray-500 hover:bg-white/5 rounded transition-colors border border-transparent hover:border-[#333]">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-1.5 px-2 py-1.5 text-gray-500 hover:bg-white/5 rounded transition-colors border border-transparent hover:border-[#333]">
                   <TagIcon className="w-3.5 h-3.5" />
                 </button>
-                <button className="flex items-center gap-1.5 px-2 py-1.5 text-gray-500 hover:bg-white/5 rounded transition-colors border border-transparent hover:border-[#333]">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-1.5 px-2 py-1.5 text-gray-500 hover:bg-white/5 rounded transition-colors border border-transparent hover:border-[#333]">
                   <Link2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -290,7 +293,7 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
               />
 
               <div className="flex items-center gap-2 mt-4">
-                <button className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-400 bg-purple-500/10 px-3 py-1.5 rounded-lg border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-400 bg-purple-500/10 px-3 py-1.5 rounded-lg border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
                   <Sparkles className="w-3.5 h-3.5" /> IA
                 </button>
               </div>
@@ -299,7 +302,7 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
 
           {activeTab === 'doc' && (
             <div className="flex flex-col animate-in fade-in duration-300">
-              <button className="flex items-center gap-2 w-fit px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-[#333] text-[13px] font-medium text-gray-300 mb-6 transition-colors">
+              <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 w-fit px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-[#333] text-[13px] font-medium text-gray-300 mb-6 transition-colors">
                 <List className="w-4 h-4 text-gray-400" /> Meus documentos <ChevronDown className="w-3.5 h-3.5 opacity-50" />
               </button>
               
@@ -313,22 +316,22 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
               />
 
               <div className="space-y-3 pl-2">
-                <button className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
                   <FileText className="w-4 h-4" /> Comece a escrever
                 </button>
-                <button className="flex items-center gap-3 text-[14px] text-purple-400 hover:text-purple-300 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-3 text-[14px] text-purple-400 hover:text-purple-300 transition-colors">
                   <Sparkles className="w-4 h-4" /> Escrever com IA
                 </button>
                 
                 <div className="pt-4 pb-2 text-[12px] font-medium text-gray-500">Add new</div>
                 
-                <button className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
                   <Table className="w-4 h-4" /> Tabela
                 </button>
-                <button className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
                   <Type className="w-4 h-4" /> Coluna
                 </button>
-                <button className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-3 text-[14px] text-gray-400 hover:text-gray-200 transition-colors">
                   <List className="w-4 h-4" /> Lista da ClickUp
                 </button>
               </div>
@@ -346,18 +349,18 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
                 className="w-full bg-transparent text-[22px] text-gray-400 placeholder-[#555] outline-none mb-4"
               />
 
-              <button className="flex items-center gap-2 text-[13px] text-gray-500 hover:text-gray-300 transition-colors w-fit mb-6">
+              <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 text-[13px] text-gray-500 hover:text-gray-300 transition-colors w-fit mb-6">
                 <FileText className="w-4 h-4" /> Adicionar descrição
               </button>
 
               <div className="flex items-center gap-3">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-[#333] hover:bg-white/5 rounded-md text-[13px] font-medium text-gray-300 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-[#333] hover:bg-white/5 rounded-md text-[13px] font-medium text-gray-300 transition-colors">
                   <Calendar className="w-4 h-4 text-gray-400" /> Hoje
                 </button>
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-[#333] hover:bg-white/5 rounded-md text-[13px] font-medium text-gray-300 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-[#333] hover:bg-white/5 rounded-md text-[13px] font-medium text-gray-300 transition-colors">
                   <div className="w-4 h-4 rounded-full bg-white text-black flex items-center justify-center font-bold text-[10px]">A</div> Para mim
                 </button>
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-[#333] hover:bg-white/5 rounded-md text-[13px] font-medium text-gray-300 transition-colors">
+                <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-[#333] hover:bg-white/5 rounded-md text-[13px] font-medium text-gray-300 transition-colors">
                   <Bell className="w-4 h-4 text-gray-400" /> Notifique-me
                 </button>
               </div>
@@ -366,7 +369,7 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
 
           {activeTab === 'quadro' && (
             <div className="flex flex-col animate-in fade-in duration-300">
-              <button className="flex items-center gap-2 w-fit px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-[#333] text-[13px] font-medium text-gray-300 mb-6 transition-colors">
+              <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 w-fit px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-[#333] text-[13px] font-medium text-gray-300 mb-6 transition-colors">
                 <List className="w-4 h-4 text-gray-400" /> Meus Whiteboards <ChevronDown className="w-3.5 h-3.5 opacity-50" />
               </button>
               
@@ -383,7 +386,7 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
 
           {activeTab === 'painel' && (
             <div className="flex flex-col animate-in fade-in duration-300">
-              <button className="flex items-center gap-2 w-fit px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-[#333] text-[13px] font-medium text-gray-300 mb-6 transition-colors">
+              <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 w-fit px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-[#333] text-[13px] font-medium text-gray-300 mb-6 transition-colors">
                 <List className="w-4 h-4 text-gray-400" /> Meus painéis <ChevronDown className="w-3.5 h-3.5 opacity-50" />
               </button>
               
@@ -422,7 +425,7 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
           
           <div className="flex items-center gap-4">
             {activeTab === 'lembrete' && (
-              <button className="text-gray-500 hover:text-gray-300 transition-colors">
+              <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="text-gray-500 hover:text-gray-300 transition-colors">
                 <Paperclip className="w-4 h-4" />
               </button>
             )}
@@ -438,7 +441,7 @@ export const CreateTaskModal = ({ onClose, initialListId }: Props) => {
                   >
                     Criar Tarefa
                   </button>
-                  <button className="px-2 py-2.5 bg-primary hover:bg-primary/90 text-white transition-colors">
+                  <button type="button" onClick={() => showToast('Recurso em desenvolvimento')} className="px-2 py-2.5 bg-primary hover:bg-primary/90 text-white transition-colors">
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                 </div>

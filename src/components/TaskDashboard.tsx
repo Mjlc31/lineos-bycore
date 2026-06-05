@@ -18,6 +18,7 @@ import { format, isToday, isPast, parseISO, isValid } from 'date-fns';
 import { TaskModal } from './ui/TaskModal';
 import { CreateTaskModal } from './ui/CreateTaskModal';
 import { ManageCardsModal } from './ui/ManageCardsModal';
+import { useToast } from './Toast';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 // Prioridades do ClickUp
@@ -80,7 +81,8 @@ const PRIORITY_DATA = [
 ];
 
 const TaskDashboard = () => {
-  const { tasks, taskStatuses, updateTask } = useAppContext();
+  const { tasks, taskStatuses, updateTask, rhTeam } = useAppContext();
+  const { showToast } = useToast();
   const { profile } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'pending' | 'done' | 'delegated'>('pending');
@@ -106,8 +108,21 @@ const TaskDashboard = () => {
   };
 
   const { overdue, today, next, unscheduled, closedTasks } = useMemo(() => {
-    const activeTasks = tasks.filter(t => !isTaskClosed(t.statusId, taskStatuses));
-    const closed = tasks.filter(t => isTaskClosed(t.statusId, taskStatuses));
+    // Avatar do usuário logado para filtrar
+    const myAvatar = profile?.avatarUrl ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.fullName || 'U')}&background=E31837&color=fff`;
+    const myRhProfile = rhTeam.find(rh =>
+      (rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`) === myAvatar
+    );
+    const myRhAvatar = myRhProfile
+      ? (myRhProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(myRhProfile.name)}&background=3b82f6&color=fff`)
+      : myAvatar;
+
+    // Filtra tarefas do usuário logado (ou todas se não tiver assignees)
+    const myTasks = tasks.filter(t => t.assignees.length === 0 || t.assignees.includes(myRhAvatar));
+
+    const activeTasks = myTasks.filter(t => !isTaskClosed(t.statusId, taskStatuses));
+    const closed = myTasks.filter(t => isTaskClosed(t.statusId, taskStatuses));
 
     const ov: Task[] = [];
     const td: Task[] = [];
@@ -136,11 +151,37 @@ const TaskDashboard = () => {
     nx.sort((a,b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
 
     return { overdue: ov, today: td, next: nx, unscheduled: un, closedTasks: closed };
-  }, [tasks, taskStatuses]);
+  }, [tasks, taskStatuses, profile, rhTeam]);
 
   const recentTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 5);
+    return [...tasks].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 8);
   }, [tasks]);
+
+  // Dados reais para o gráfico de prioridades
+  const priorityChartData = useMemo(() => {
+    const counts: Record<string, number> = { Urgent: 0, High: 0, Normal: 0, Low: 0 };
+    tasks.filter(t => !isTaskClosed(t.statusId, taskStatuses)).forEach(t => {
+      if (t.priority && counts[t.priority] !== undefined) counts[t.priority]++;
+    });
+    return [
+      { name: 'Urgente', value: counts.Urgent, color: '#ef4444' },
+      { name: 'Alta',    value: counts.High,   color: '#f59e0b' },
+      { name: 'Normal',  value: counts.Normal, color: '#3b82f6' },
+      { name: 'Baixa',   value: counts.Low,    color: '#6b7280' },
+    ].filter(d => d.value > 0);
+  }, [tasks, taskStatuses]);
+
+  // Dados reais para o gráfico de equipe
+  const teamChartData = useMemo(() => {
+    const activeTasks = tasks.filter(t => !isTaskClosed(t.statusId, taskStatuses));
+    return rhTeam.map(rh => {
+      const avatar = rh.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(rh.name)}&background=3b82f6&color=fff`;
+      return {
+        name: rh.name.split(' ')[0],
+        tarefas: activeTasks.filter(t => t.assignees.includes(avatar)).length,
+      };
+    }).filter(d => d.tarefas > 0).slice(0, 6);
+  }, [tasks, taskStatuses, rhTeam]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -486,7 +527,7 @@ const TaskDashboard = () => {
               <p className="text-[11px] font-medium text-gray-400 max-w-[240px] mb-6 leading-relaxed">
                 Use a IA ClickUp para criar resumos recorrentes das atividades recentes.
               </p>
-              <button className="flex items-center gap-1.5 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-xs font-semibold text-gray-200 transition-colors">
+              <button type="button" onClick={() => showToast('Recurso de Inteligência Artificial em desenvolvimento.')} className="flex items-center gap-1.5 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-xs font-semibold text-gray-200 transition-colors">
                 Criar uma recapitulação
               </button>
             </div>
@@ -568,15 +609,22 @@ const TaskDashboard = () => {
         return (
           <WidgetCard id={id} title="Desempenho da Equipe" hasSettings={true}>
             <div className="h-full w-full p-4 pb-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={TEAM_DATA}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="name" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                  <Bar dataKey="tarefas" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {teamChartData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <Users className="w-10 h-10 text-gray-600 mb-3 opacity-50" />
+                  <p className="text-xs text-gray-500">Nenhuma tarefa atribuída à equipe.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={teamChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="name" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                    <Bar dataKey="tarefas" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </WidgetCard>
         );
@@ -606,23 +654,30 @@ const TaskDashboard = () => {
         return (
           <WidgetCard id={id} title="Distribuição de Prioridades" hasSettings={true}>
             <div className="h-full w-full p-4 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={PRIORITY_DATA}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {PRIORITY_DATA.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+              {priorityChartData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <PieChart className="w-10 h-10 text-gray-600 mb-3 opacity-50" />
+                  <p className="text-xs text-gray-500">Nenhuma tarefa ativa.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={priorityChartData}
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {priorityChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </WidgetCard>
         );
@@ -768,12 +823,12 @@ const TaskDashboard = () => {
               rowHeight={100}
               margin={[16, 16]}
               onLayoutChange={handleLayoutChange}
-              draggableHandle=".drag-handle"
               isResizable={true}
               resizeHandles={['se', 's', 'e']}
               isDraggable={true}
               compactType="vertical"
               preventCollision={false}
+              {...({ draggableHandle: ".drag-handle" } as any)}
             >
               {layout.map(item => (
                 <div key={item.i} style={{ overflow: 'visible' }}>

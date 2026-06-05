@@ -9,6 +9,7 @@ import {
 import { Client } from '../types';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { useAppContext } from '../context/AppContext';
+import { useToast } from './Toast';
 
 interface ClientDetailModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   useEscapeKey(onClose, isOpen);
 
   const { clientStatuses, addClientComment, loadClientComments } = useAppContext();
+  const { showToast, ToastContainer } = useToast();
   const [formData, setFormData] = useState<Partial<Client>>({});
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,10 +84,10 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
       const fname = fieldNames[field as string] || field;
       const newActivity = {
         id: `act-${Date.now()}`,
-        type: 'system',
+        type: 'system' as const,
         description: `Atualizou o campo ${fname}`,
         createdAt: new Date().toISOString()
-      };
+      } as any;
       
       const updatedActivities = [newActivity, ...(formData.activities || [])];
       setFormData(prev => ({ ...prev, activities: updatedActivities }));
@@ -133,17 +135,17 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
           
           <div className="flex items-center gap-3 text-[11px] font-medium text-gray-400">
             <span className="hidden md:inline">Criada em mai 23</span>
-            <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-md transition-colors border border-purple-500/20">
+            <button onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-md transition-colors border border-purple-500/20">
               <Sparkles className="w-3.5 h-3.5" /> Pergunte à IA
             </button>
-            <button className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-white/5 rounded-md transition-colors">
+            <button onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-white/5 rounded-md transition-colors">
               <Share2 className="w-3.5 h-3.5" /> Compartilhar
             </button>
-            <button className="p-1.5 hover:bg-white/5 rounded-md transition-colors">
+            <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1.5 hover:bg-white/5 rounded-md transition-colors">
               <MoreHorizontal className="w-4 h-4" />
             </button>
             <div className="w-px h-4 bg-[#333] mx-1" />
-            <button className="p-1.5 hover:bg-white/5 rounded-md transition-colors">
+            <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1.5 hover:bg-white/5 rounded-md transition-colors">
               <Maximize2 className="w-4 h-4" />
             </button>
             <button onClick={onClose} className="p-1.5 hover:bg-white/5 rounded-md transition-colors hover:text-white">
@@ -165,7 +167,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   <Building2 className="w-3.5 h-3.5" /> Client
                 </div>
                 <span>{client.id.split('-')[0]}</span>
-                <button className="flex items-center gap-1.5 px-2 py-1 bg-purple-500/10 text-purple-400 rounded hover:bg-purple-500/20 transition-colors">
+                <button onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-1.5 px-2 py-1 bg-purple-500/10 text-purple-400 rounded hover:bg-purple-500/20 transition-colors">
                   <Sparkles className="w-3.5 h-3.5" /> Pergunte à IA
                 </button>
               </div>
@@ -458,7 +460,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       }
                     }}
                   />
-                  <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 px-3 py-2 rounded border border-[#333] transition-colors">
+                  <button onClick={() => showToast('Recurso em desenvolvimento')} className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 px-3 py-2 rounded border border-[#333] transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Adicionar
                   </button>
                 </div>
@@ -581,18 +583,18 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 />
                 <div className="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] rounded-b-xl border-t border-[#2b2b2b]">
                   <div className="flex items-center gap-1">
-                    <button className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-white/5 rounded transition-colors"><Plus className="w-4 h-4" /></button>
+                    <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-white/5 rounded transition-colors"><Plus className="w-4 h-4" /></button>
                     <div className="flex items-center gap-1 bg-white/5 rounded px-2 py-1 cursor-pointer hover:bg-white/10 transition-colors">
                       <span className="text-[11px] font-medium text-gray-400">Comentário</span>
                       <ChevronDown className="w-3 h-3 text-gray-500" />
                     </div>
-                    <button className="p-1 text-gray-500 hover:text-purple-400 transition-colors ml-1"><Sparkles className="w-3.5 h-3.5" /></button>
-                    <button className="p-1 text-gray-500 hover:text-gray-300 transition-colors"><Paperclip className="w-3.5 h-3.5" /></button>
-                    <button className="p-1 text-gray-500 hover:text-gray-300 transition-colors">@</button>
-                    <button className="p-1 text-gray-500 hover:text-gray-300 transition-colors">😎</button>
+                    <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1 text-gray-500 hover:text-purple-400 transition-colors ml-1"><Sparkles className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1 text-gray-500 hover:text-gray-300 transition-colors"><Paperclip className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1 text-gray-500 hover:text-gray-300 transition-colors">@</button>
+                    <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1 text-gray-500 hover:text-gray-300 transition-colors">😎</button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"><Lock className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => showToast('Recurso em desenvolvimento')} className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"><Lock className="w-3.5 h-3.5" /></button>
                     <button 
                       onClick={handleSubmitComment}
                       disabled={!newComment.trim() || isSubmitting}
@@ -606,6 +608,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
             )}
           </div>
         </div>
+        <ToastContainer />
       </motion.div>
     </div>
   );

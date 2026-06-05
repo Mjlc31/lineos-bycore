@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import ClickUpInterface from './components/ClickUpInterface';
 import LineOsSidebar, { LineOsTab } from './components/LineOsSidebar';
@@ -19,18 +20,22 @@ import RhCatalogo from './components/RhCatalogo';
 import InstagramPreview from './components/InstagramPreview';
 import SimulacaoView from './components/SimulacaoView';
 
-function App() {
-  const { session, profile, isAuthLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<LineOsTab>('dashboard');
+function MainLayout() {
   const [showPalette, setShowPalette] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Rota pública de simulação (Link Builder)
-  if (window.location.pathname.startsWith('/preview/instagram')) {
-    return <InstagramPreview />;
-  }
-  if (window.location.pathname.startsWith('/simulacao')) {
-    return <SimulacaoView />;
-  }
+  // Mapeia pathname para a aba ativa para retrocompatibilidade com componentes filhos
+  const pathnameToTab = (path: string): LineOsTab => {
+    const route = path.replace('/', '');
+    return (route === '' ? 'dashboard' : route) as LineOsTab;
+  };
+  const activeTab = pathnameToTab(location.pathname);
+
+  const handleNavigate = useCallback((tab: LineOsTab) => {
+    navigate(tab === 'dashboard' ? '/' : `/${tab}`);
+    setShowPalette(false);
+  }, [navigate]);
 
   // Global Ctrl+K listener
   useEffect(() => {
@@ -44,29 +49,54 @@ function App() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const handleNavigate = useCallback((tab: LineOsTab) => {
-    setActiveTab(tab);
-    setShowPalette(false);
-  }, []);
+  return (
+    <div className="flex h-screen overflow-hidden font-sans" style={{ background: 'var(--surface-0)', color: 'var(--text-secondary)' }}>
+      <LineOsSidebar activeTab={activeTab} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <LineOsTopBar
+          activeTab={activeTab}
+          onOpenPalette={() => setShowPalette(true)}
+        />
+        <main className="flex-1 overflow-hidden relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="h-full w-full"
+            >
+              <Routes location={location} key={location.pathname}>
+                <Route path="/" element={<Dashboard onNavigate={handleNavigate} />} />
+                <Route path="/gestor" element={<ClickUpInterface />} />
+                <Route path="/aprovacao" element={<AprovacaoConteudo />} />
+                <Route path="/crm" element={<CrmVendas />} />
+                <Route path="/financeiro" element={<FinanceiroDre />} />
+                <Route path="/academy" element={<Academy />} />
+                <Route path="/agendamento" element={<Agendamento />} />
+                <Route path="/usuarios" element={<UserManagement />} />
+                <Route path="/rh" element={<RhCatalogo />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':     return <Dashboard onNavigate={handleNavigate} />;
-      case 'gestor':        return <ClickUpInterface />;
-      case 'aprovacao':     return <AprovacaoConteudo />;
-      case 'crm':           return <CrmVendas />;
-      case 'financeiro':    return <FinanceiroDre />;
-      case 'academy':       return <Academy />;
-      case 'agendamento':   return <Agendamento />;
-      case 'usuarios':      return <UserManagement />;
-      case 'rh':            return <RhCatalogo />;
-      default:              return <div className="p-8 text-white">Em desenvolvimento...</div>;
-    }
-  };
+      <CommandPalette
+        isOpen={showPalette}
+        onClose={() => setShowPalette(false)}
+        onNavigate={handleNavigate}
+        activeTab={activeTab}
+      />
+    </div>
+  );
+}
 
-  // Remove bypass público - o cliente precisa estar logado para ver seu conteúdo
+function App() {
+  const { session, profile, isAuthLoading } = useAuth();
 
-  // Auth loading state
   if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#050507]">
@@ -92,7 +122,6 @@ function App() {
             <div className="relative bg-[#0f0f12] p-6 rounded-2xl border border-white/5 shadow-2xl">
               <LineLogo className="w-12 h-12 text-[#E31837]" />
             </div>
-            {/* Subtle spinner ring */}
             <div className="absolute -inset-2 border border-[#E31837]/20 rounded-3xl animate-pulse" />
           </div>
 
@@ -109,53 +138,25 @@ function App() {
     );
   }
 
-  // Not authenticated → show login
-  if (!session) {
-    return <LoginPage />;
-  }
-
-  // Authenticated → show app
-  if (profile?.role === 'CLIENTE') {
-    return (
-      <div className="flex h-screen overflow-hidden font-sans" style={{ background: 'var(--surface-0)', color: 'var(--text-secondary)' }}>
-        <main className="flex-1 overflow-hidden relative">
-           <ApprovalClientView />
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden font-sans" style={{ background: 'var(--surface-0)', color: 'var(--text-secondary)' }}>
-      <LineOsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <LineOsTopBar
-          activeTab={activeTab}
-          onOpenPalette={() => setShowPalette(true)}
-        />
-        <main className="flex-1 overflow-hidden relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="h-full w-full"
-            >
-              {renderContent()}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-      </div>
-
-      <CommandPalette
-        isOpen={showPalette}
-        onClose={() => setShowPalette(false)}
-        onNavigate={handleNavigate}
-        activeTab={activeTab}
-      />
-    </div>
+    <Routes>
+      <Route path="/preview/instagram/*" element={<InstagramPreview />} />
+      <Route path="/simulacao/*" element={<SimulacaoView />} />
+      
+      <Route path="*" element={
+        !session ? (
+          <LoginPage />
+        ) : profile?.role === 'CLIENTE' ? (
+          <div className="flex h-screen overflow-hidden font-sans" style={{ background: 'var(--surface-0)', color: 'var(--text-secondary)' }}>
+            <main className="flex-1 overflow-hidden relative">
+              <ApprovalClientView />
+            </main>
+          </div>
+        ) : (
+          <MainLayout />
+        )
+      } />
+    </Routes>
   );
 }
 

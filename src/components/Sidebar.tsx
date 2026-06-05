@@ -119,7 +119,7 @@ const Sidebar = ({ currentView, onViewChange, onOpenClientDetails, selectedLocat
           <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={async () => {
             const name = window.prompt('Nome do novo Espaço:');
             if (name) {
-              await addSpace({ name, iconText: name[0].toUpperCase(), color: '#E31837' });
+              await addSpace({ name, icon: name[0].toUpperCase(), color: '#E31837' });
               showToast(`Espaço "${name}" criado!`);
             }
           }} />
