@@ -122,7 +122,6 @@ const CreateUserModal = ({ onClose, onSuccess, clients }: CreateUserModalProps) 
             email: form.email,
             full_name: form.fullName,
             role: form.role,
-            client_id: form.role === 'CLIENTE' ? form.clientId || null : null,
           });
         }
         showToast(`Usuário ${form.fullName} criado com sucesso!`);

@@ -19,6 +19,7 @@ import UserManagement from './components/UserManagement';
 import RhCatalogo from './components/RhCatalogo';
 import InstagramPreview from './components/InstagramPreview';
 import SimulacaoView from './components/SimulacaoView';
+import { seedTaskHierarchy } from './services/taskService';
 
 function MainLayout() {
   const [showPalette, setShowPalette] = useState(false);
@@ -96,6 +97,12 @@ function MainLayout() {
 
 function App() {
   const { session, profile, isAuthLoading } = useAuth();
+
+  useEffect(() => {
+    if (session) {
+      seedTaskHierarchy();
+    }
+  }, [session]);
 
   if (isAuthLoading) {
     return (

@@ -318,7 +318,7 @@ export type ScheduledEvent = {
 
 // Retrocompatibilidade com Meeting (antigo)
 export type Meeting = {
-  id: number;
+  id: number | string;
   title: string;
   date: string;
   time: string;

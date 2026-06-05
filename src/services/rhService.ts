@@ -15,7 +15,7 @@ export type RhProfile = {
 };
 
 export async function fetchRhProfiles(): Promise<RhProfile[]> {
-  if (!supabase) return [];
+  if (!supabase) return [] as any;
   const { data, error } = await supabase.from('rh_profiles').select('*').order('name');
   if (error) throw new Error(`[rhService] fetchRhProfiles: ${error.message}`);
   
@@ -31,7 +31,7 @@ export async function fetchRhProfiles(): Promise<RhProfile[]> {
     pix: r.pix_key || '',
     skills: r.skills || [],
     avatar: r.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name)}&background=random`
-  }));
+  } as any));
 }
 
 export async function createRhProfile(profile: Omit<RhProfile, 'id'>): Promise<RhProfile> {

@@ -47,7 +47,7 @@ export async function createContentItem(
     .insert({
       title: item.title,
       type: item.type as 'video' | 'image' | 'pdf',
-      status: item.status as 'PENDENTE' | 'REVISÃO' | 'ALTERAÇÃO' | 'APROVADO',
+      status: item.status as any,
       date: item.date,
       feedback: item.feedback,
       thumbnail: item.thumbnail,
@@ -61,7 +61,7 @@ export async function createContentItem(
       caption: item.caption,
       client_email: item.clientEmail,
       file_url: item.fileUrl,
-    })
+    } as any)
     .select()
     .single();
 
@@ -75,7 +75,7 @@ export async function updateContentStatus(
   feedback?: string | null
 ): Promise<void> {
   if (!supabase) return;
-  const patch: Record<string, unknown> = { status };
+  const patch: any = { status };
   if (feedback !== undefined) patch.feedback = feedback;
 
   const { error } = await supabase.from('content_items').update(patch).eq('id', id);

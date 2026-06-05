@@ -3,13 +3,12 @@ import { Play, Clock, ChevronRight, BookOpen, X, CheckCircle2, ArrowLeft, FileTe
 import { motion, AnimatePresence } from 'motion/react';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { useAppContext } from '../context/AppContext';
-import { academyTracks } from '../data';
 import { CourseTrack, Lesson } from '../types';
 
 const Academy = () => {
   const [activeTrack, setActiveTrack] = useState<CourseTrack | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const { watchedVideos, toggleVideoWatched } = useAppContext();
+  const { watchedVideos, toggleVideoWatched, academyTracks } = useAppContext();
 
   // For Escape key closing
   const closeView = useCallback(() => {

@@ -18,7 +18,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {
   Task, Lead, Transaction, ContentItem, Meeting, Client, Status, ClientStatus,
   TaskComment, TaskAttachment, Automation, CrmColumn, LeadActivity, LeadTask, ContentStatus,
-  CustomFieldDefinition, TaskSpace, TaskFolder, TaskList
+  CustomFieldDefinition, TaskSpace, TaskFolder, TaskList, CourseTrack
 } from '../types';
 import { useTasks } from '../hooks/useTasks';
 import { useLeads } from '../hooks/useLeads';
@@ -26,6 +26,7 @@ import { useContent } from '../hooks/useContent';
 import { useTransactions } from '../hooks/useTransactions';
 import { useClients } from '../hooks/useClients';
 import { useMeetings } from '../hooks/useMeetings';
+import { useAcademy } from '../hooks/useAcademy';
 import { useAuth } from './AuthContext';
 import { useRh } from '../hooks/useRh';
 import { RhProfile } from '../services/rhService';
@@ -53,6 +54,7 @@ interface AppContextType {
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>;
   watchedVideos: string[];
   setWatchedVideos: React.Dispatch<React.SetStateAction<string[]>>;
+  academyTracks: CourseTrack[];
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   taskStatuses: Status[];
@@ -143,24 +145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const meetingsHook = useMeetings();
   const systemUsersHook = useSystemUsers();
   const rhHook = useRh();
-
-  // ─── Academy – watched videos (config por usuário, localStorage) ──────────
-  const [watchedVideos, setWatchedVideos] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('line_os_academy_watched');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('line_os_academy_watched', JSON.stringify(watchedVideos));
-  }, [watchedVideos]);
-
-  const toggleVideoWatched = useCallback((videoId: string) => {
-    setWatchedVideos(prev =>
-      prev.includes(videoId) ? prev.filter(v => v !== videoId) : [...prev, videoId]
-    );
-  }, []);
+  const academyHook = useAcademy(profile?.id);
 
   // ─── Wrapper para updateLeadStatus (precisa das crmColumns) ──────────────
   const updateLeadStatus = useCallback((leadId: string, newColumnId: string) => {
@@ -239,8 +224,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setMeetings: meetingsHook.setMeetings,
 
       // Academy
-      watchedVideos,
-      setWatchedVideos,
+      watchedVideos: academyHook.watchedVideos,
+      setWatchedVideos: academyHook.setWatchedVideos,
+      academyTracks: academyHook.academyTracks,
 
       // Task Actions
       addTask: tasksHook.addTask,
@@ -289,7 +275,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Others
       addMeeting: meetingsHook.addMeeting,
-      toggleVideoWatched,
+      toggleVideoWatched: academyHook.toggleVideoWatched,
 
       // System Users
       systemUsers: systemUsersHook.systemUsers,

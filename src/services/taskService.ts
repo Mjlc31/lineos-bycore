@@ -202,12 +202,12 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'comments
       assignees: task.assignees,
       due_date: task.dueDate,
       priority: task.priority,
-      tags: (task.tags ?? []) as Record<string, unknown>[],
+      tags: (task.tags ?? []) as any,
       related_task_ids: task.relatedTaskIds ?? [],
-      subtasks: (task.subtasks ?? []) as Record<string, unknown>[],
+      subtasks: (task.subtasks ?? []) as any,
       time_spent: task.timeSpent ?? 0,
       is_timer_running: task.isTimerRunning ?? false,
-      custom_fields: task.customFields ?? {},
+      custom_fields: (task.customFields ?? {}) as any,
       completed_at: task.completedAt,
     })
     .select()
@@ -228,12 +228,12 @@ export async function updateTask(id: string, patch: Partial<Task>): Promise<void
   if (patch.assignees !== undefined)    dbPatch.assignees = patch.assignees;
   if (patch.dueDate !== undefined)      dbPatch.due_date = patch.dueDate;
   if (patch.priority !== undefined)     dbPatch.priority = patch.priority;
-  if (patch.tags !== undefined)         dbPatch.tags = patch.tags as Record<string, unknown>[];
+  if (patch.tags !== undefined)         dbPatch.tags = patch.tags as any;
   if (patch.relatedTaskIds !== undefined) dbPatch.related_task_ids = patch.relatedTaskIds;
-  if (patch.subtasks !== undefined)     dbPatch.subtasks = patch.subtasks as Record<string, unknown>[];
+  if (patch.subtasks !== undefined)     dbPatch.subtasks = patch.subtasks as any;
   if (patch.timeSpent !== undefined)    dbPatch.time_spent = patch.timeSpent;
   if (patch.isTimerRunning !== undefined) dbPatch.is_timer_running = patch.isTimerRunning;
-  if (patch.customFields !== undefined) dbPatch.custom_fields = patch.customFields;
+  if (patch.customFields !== undefined) dbPatch.custom_fields = patch.customFields as any;
   if (patch.completedAt !== undefined)  dbPatch.completed_at = patch.completedAt;
 
   const { error } = await supabase.from('tasks').update(dbPatch).eq('id', id);
@@ -309,5 +309,69 @@ export async function addComment(
       id: `comment-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
+  }
+}
+
+// ─── Seed Scripts ─────────────────────────────────────────────────────────────
+export async function seedTaskHierarchy(): Promise<void> {
+  if (!supabase) return;
+
+  try {
+    // 1. Verificar se existe pelo menos um Space
+    const spaces = await fetchSpaces();
+    let generalSpaceId = '';
+    let generalFolderId = '';
+    let generalListId = '';
+
+    if (spaces.length === 0) {
+      console.log('[seedTaskHierarchy] Criando Space Geral...');
+      const space = await createSpace({ name: 'Geral', icon: 'LayoutDashboard', color: '#6366f1' });
+      generalSpaceId = space.id;
+    } else {
+      generalSpaceId = spaces[0].id;
+    }
+
+    // 2. Verificar se existe pelo menos um Folder no Space Geral
+    const folders = await fetchFolders();
+    const generalFolders = folders.filter(f => f.spaceId === generalSpaceId);
+    if (generalFolders.length === 0) {
+      console.log('[seedTaskHierarchy] Criando Folder Projetos...');
+      const folder = await createFolder({ spaceId: generalSpaceId, name: 'Projetos' });
+      generalFolderId = folder.id;
+    } else {
+      generalFolderId = generalFolders[0].id;
+    }
+
+    // 3. Verificar se existe pelo menos uma List no Folder
+    const lists = await fetchLists();
+    const generalLists = lists.filter(l => l.folderId === generalFolderId);
+    if (generalLists.length === 0) {
+      console.log('[seedTaskHierarchy] Criando List Backlog...');
+      const list = await createList({ spaceId: generalSpaceId, folderId: generalFolderId, name: 'Backlog', color: '#22c55e' });
+      generalListId = list.id;
+    } else {
+      generalListId = generalLists[0].id;
+    }
+
+    // 4. Vincular tarefas órfãs à lista recém-criada/encontrada
+    const { data: orphanedTasks, error: fetchError } = await supabase
+      .from('tasks')
+      .select('id')
+      .is('list_id', null);
+
+    if (fetchError) throw fetchError;
+
+    if (orphanedTasks && orphanedTasks.length > 0) {
+      console.log(`[seedTaskHierarchy] Vinculando ${orphanedTasks.length} tarefas órfãs à lista ${generalListId}...`);
+      const taskIds = orphanedTasks.map(t => t.id);
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ list_id: generalListId })
+        .in('id', taskIds);
+        
+      if (updateError) throw updateError;
+    }
+  } catch (error) {
+    console.error('[seedTaskHierarchy] Erro ao semear hierarquia de tarefas:', error);
   }
 }

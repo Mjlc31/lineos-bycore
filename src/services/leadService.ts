@@ -2,7 +2,50 @@
  * Lead Service — Acesso ao Supabase para o módulo CRM & Vendas
  */
 import { supabase } from '../lib/supabase';
-import type { Lead, LeadActivity, LeadTask } from '../types';
+import type { Lead, LeadActivity, LeadTask, CrmColumn } from '../types';
+
+// ─── CRM Columns ─────────────────────────────────────────────────────────────
+export async function fetchCrmColumns(): Promise<CrmColumn[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('crm_columns').select('*').order('sort_order', { ascending: true });
+  if (error) throw new Error(`[leadService] fetchCrmColumns: ${error.message}`);
+  
+  // Mapear color para accent baseado numa heurística básica ou fixar, pois o BD não tem "accent" inicialmente
+  return (data ?? []).map(r => {
+    let accent = 'blue';
+    if (r.color.includes('purple')) accent = 'purple';
+    if (r.color.includes('orange')) accent = 'orange';
+    if (r.color.includes('green')) accent = 'green';
+    if (r.color.includes('red')) accent = 'red';
+    
+    return {
+      id: r.id,
+      title: r.title,
+      color: r.color,
+      accent,
+    };
+  });
+}
+
+export async function seedCrmColumnsIfEmpty(): Promise<void> {
+  if (!supabase) return;
+  try {
+    const columns = await fetchCrmColumns();
+    if (columns.length === 0) {
+      console.log('[leadService] Semeando colunas do CRM...');
+      const defaultColumns = [
+        { id: 'leads', title: 'Leads', color: 'bg-blue-500', sort_order: 1 },
+        { id: 'agendada', title: 'Reunião Agendada', color: 'bg-purple-500', sort_order: 2 },
+        { id: 'proposta', title: 'Proposta Enviada', color: 'bg-orange-500', sort_order: 3 },
+        { id: 'ganho', title: 'Fechado (Ganho)', color: 'bg-green-500', sort_order: 4 },
+        { id: 'perdido', title: 'Perdido', color: 'bg-red-500', sort_order: 5 }
+      ];
+      await supabase.from('crm_columns').insert(defaultColumns);
+    }
+  } catch (err) {
+    console.error('[leadService] Erro ao semear colunas do CRM:', err);
+  }
+}
 
 // ─── Mapper: DB Row → Lead ───────────────────────────────────────────────────
 function mapRowToLead(
@@ -115,7 +158,7 @@ export async function createLead(lead: Omit<Lead, 'id' | 'activities' | 'tasks'>
       company_phone: lead.companyPhone,
       company_cnpj: lead.companyCNPJ,
       company_address: lead.companyAddress,
-    })
+    } as any)
     .select()
     .single();
 

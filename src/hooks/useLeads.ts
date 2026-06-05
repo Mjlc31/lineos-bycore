@@ -12,9 +12,9 @@ import {
   fetchLeads, createLead, updateLead, moveLead as moveLeadDB,
   deleteLead, addLeadActivity, addLeadTask as addLeadTaskDB,
   toggleLeadTask as toggleLeadTaskDB,
+  fetchCrmColumns, seedCrmColumnsIfEmpty
 } from '../services';
 import type { Lead, CrmColumn, LeadActivity, LeadTask } from '../types';
-import { crmLeads as initialLeads } from '../data';
 
 const DEFAULT_CRM_COLUMNS: CrmColumn[] = [
   { id: 'leads', title: 'Leads', color: 'bg-blue-500', accent: 'blue' },
@@ -24,23 +24,31 @@ const DEFAULT_CRM_COLUMNS: CrmColumn[] = [
   { id: 'perdido', title: 'Perdido', color: 'bg-red-500', accent: 'red' },
 ];
 
-function loadCrmColumns(): CrmColumn[] {
-  try {
-    const saved = localStorage.getItem('line_os_crm_columns');
-    return saved ? JSON.parse(saved) : DEFAULT_CRM_COLUMNS;
-  } catch {
-    return DEFAULT_CRM_COLUMNS;
-  }
-}
-
 export function useLeads() {
   const queryClient = useQueryClient();
-  const [crmColumns, setCrmColumns] = useState<CrmColumn[]>(loadCrmColumns);
 
-  const { data: leads = [], isLoading } = useQuery({
+  const { data: crmColumns = DEFAULT_CRM_COLUMNS, isLoading: isColsLoading } = useQuery({
+    queryKey: ['crm_columns'],
+    queryFn: async () => {
+      await seedCrmColumnsIfEmpty();
+      const cols = await fetchCrmColumns();
+      return cols.length > 0 ? cols : DEFAULT_CRM_COLUMNS;
+    },
+  });
+
+  const setCrmColumns = useCallback((updater: any) => {
+    queryClient.setQueryData(['crm_columns'], (prev: any) => {
+      const current = prev || DEFAULT_CRM_COLUMNS;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryClient]);
+
+  const { data: leads = [], isLoading: isLeadsLoading } = useQuery({
     queryKey: ['leads'],
     queryFn: fetchLeads,
   });
+
+  const isLoading = isColsLoading || isLeadsLoading;
 
   const setLeads = useCallback((updater: any) => {
     queryClient.setQueryData(['leads'], (prev: any) => {
@@ -48,11 +56,6 @@ export function useLeads() {
       return typeof updater === 'function' ? updater(current) : updater;
     });
   }, [queryClient]);
-
-  // Persistir configuração de colunas localmente (é config de UI)
-  useEffect(() => {
-    localStorage.setItem('line_os_crm_columns', JSON.stringify(crmColumns));
-  }, [crmColumns]);
 
   // ─── Realtime Subscription ─────────────────────────────────────────────────
   useEffect(() => {

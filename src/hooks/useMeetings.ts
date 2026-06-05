@@ -31,8 +31,8 @@ export function useMeetings() {
   useEffect(() => {
     if (!supabase) return;
     const channel = supabase
-      .channel('meetings_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
+      .channel('scheduled_events_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scheduled_events' }, () => {
         fetchMeetings().then(data => {
           setMeetings(data);
         }).catch(console.error);
@@ -55,7 +55,7 @@ export function useMeetings() {
     }
   }, []);
 
-  const removeMeeting = useCallback(async (id: number) => {
+  const removeMeeting = useCallback(async (id: number | string) => {
     setMeetings(prev => prev.filter(m => m.id !== id));
     try {
       await deleteMeetingDB(id);
